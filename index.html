@@ -660,6 +660,130 @@ window._onAuthStateChanged = onAuthStateChanged;
   .flex-row { display: flex; align-items: center; gap: 12px; }
   .text-muted { color: var(--text2); font-size: 13px; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── MOBILE RESPONSIVE ────────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+
+    /* App padding */
+    .app { padding: 12px 10px 80px; }
+
+    /* Header — stack vertically */
+    .header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+    }
+    .header > div:last-child { width: 100%; flex-direction: column; gap: 8px; }
+    .logo { font-size: 22px; }
+
+    /* Date range picker — full width */
+    .date-range-picker { width: 100%; justify-content: space-between; padding: 8px 12px; }
+    .date-range-picker input[type="date"] { width: auto; flex: 1; font-size: 12px; }
+
+    /* Auth button — full width */
+    #authBtn { width: 100%; text-align: center; padding: 10px; }
+
+    /* Tabs — horizontal scroll */
+    .tabs {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      gap: 2px;
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 8px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+
+    /* Stats — 2 columns */
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { padding: 14px 12px; }
+    .stat-value { font-size: 20px; }
+    .stat-label { font-size: 11px; }
+
+    /* Charts — single column */
+    .charts-grid { grid-template-columns: 1fr; gap: 12px; }
+    .chart-wrap { height: 180px; }
+
+    /* Table header — stack */
+    .table-header { flex-direction: column; align-items: flex-start; padding: 12px; gap: 8px; }
+    .search-input { width: 100%; }
+    #catFilter { width: 100% !important; }
+
+    /* Table — compact */
+    th { padding: 8px 10px; font-size: 10px; }
+    td { padding: 9px 10px; font-size: 12px; }
+    tfoot tr td { padding: 10px; font-size: 12px; }
+    .foot-total { font-size: 14px !important; }
+
+    /* Hide date column on very small screens to save space */
+    th:first-child, td:first-child { display: none; }
+
+    /* Category badge — smaller */
+    .cat-badge { font-size: 10px; padding: 2px 7px; }
+
+    /* Form grid — single column */
+    .form-grid { grid-template-columns: 1fr; }
+    .mapper-grid { grid-template-columns: 1fr; }
+
+    /* History bars — shrink month name */
+    .month-name { width: 60px; font-size: 12px; }
+    .month-amount { width: 80px; font-size: 12px; }
+
+    /* Cards padding */
+    .history-card { padding: 14px 12px; }
+    .chart-card { padding: 14px 12px; }
+
+    /* Reco items */
+    .reco-icon { font-size: 20px; }
+    .reco-title { font-size: 13px; }
+    .reco-desc { font-size: 12px; }
+
+    /* AI panel */
+    .chat-messages { max-height: 320px; padding: 12px; }
+    .msg { font-size: 13px; max-width: 92%; }
+    .chat-input-row { padding: 8px 10px; gap: 8px; }
+    .quick-prompts { padding: 8px 10px; gap: 6px; }
+    .qprompt { font-size: 11px; padding: 4px 10px; }
+
+    /* AI model selector row */
+    #panel-ai .ai-section > div:nth-child(2) { flex-direction: column; align-items: flex-start; }
+    #aiProviderSelect { width: 100%; }
+    #apiKeyBadge { width: 100%; text-align: center; }
+
+    /* Cat popup */
+    .cat-popup-box { padding: 16px; }
+    .cat-chips { gap: 6px; }
+    .cat-chip { font-size: 11px; padding: 4px 10px; }
+
+    /* Upload zone */
+    .upload-zone { padding: 28px 16px; }
+    .upload-icon { font-size: 30px; }
+    .upload-title { font-size: 15px; }
+    .upload-sub { font-size: 12px; }
+
+    /* Toast */
+    .toast { width: 90%; text-align: center; font-size: 13px; }
+
+    /* Mapper card */
+    .mapper-card { padding: 14px; }
+
+    /* Button sizes */
+    .btn { padding: 9px 16px; font-size: 13px; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* Month manage rows */
+    .month-row { gap: 8px; flex-wrap: wrap; }
+  }
+
+  /* Bottom nav feel — extra bottom padding for thumb reach on mobile */
+  @media (max-width: 600px) {
+    .tabs { position: sticky; top: 0; z-index: 100; background: var(--bg); border-radius: 0; border: none; border-bottom: 1px solid var(--border); padding: 8px 10px; margin-bottom: 16px; }
+    .tab.active { box-shadow: none; }
+  }
 </style>
 </head>
 <body>
