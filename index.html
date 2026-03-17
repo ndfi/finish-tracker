@@ -48,6 +48,7 @@ window._onAuthStateChanged = onAuthStateChanged;
     --accent2: #ff6584;
     --accent3: #43e97b;
     --accent4: #f7971e;
+    --inc-accent: #22c55e;
     --text: #e8e8f0;
     --text2: #9090a8;
     --text3: #5a5a72;
@@ -661,6 +662,87 @@ window._onAuthStateChanged = onAuthStateChanged;
   .text-muted { color: var(--text2); font-size: 13px; }
   .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 
+  /* ── BUDGET & INCOME ──────────────────────────────────────────────────── */
+  .budget-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-cat-name {
+    width: 100px;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .budget-bar-wrap {
+    flex: 1;
+    min-width: 120px;
+    background: var(--surface2);
+    border-radius: 6px;
+    height: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  .budget-bar-spent {
+    height: 10px;
+    border-radius: 6px;
+    transition: width 0.4s ease;
+    position: absolute;
+    right: 0;
+  }
+  .budget-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .budget-input {
+    width: 90px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    outline: none;
+    text-align: left;
+  }
+  .budget-input:focus { border-color: var(--accent); }
+  .budget-pct {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    min-width: 40px;
+    text-align: left;
+  }
+  .budget-pct.over { color: var(--accent2); font-weight: 700; }
+  .budget-pct.ok   { color: var(--accent3); }
+  .budget-pct.warn { color: var(--accent4); }
+  .suggest-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .suggest-row:last-child { border-bottom: none; }
+  .suggest-cat { font-size: 13px; font-weight: 700; min-width: 90px; }
+  .suggest-reason { font-size: 12px; color: var(--text2); flex: 1; }
+  .suggest-amount { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; white-space: nowrap; }
+  .inc-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
   /* ── MOBILE RESPONSIVE ────────────────────────────────────────────────── */
   @media (max-width: 600px) {
 
@@ -816,6 +898,8 @@ window._onAuthStateChanged = onAuthStateChanged;
   <div class="tabs">
     <button class="tab active" onclick="showTab('dashboard')">📊 דשבורד</button>
     <button class="tab" onclick="showTab('transactions')">📋 עסקאות</button>
+    <button class="tab" onclick="showTab('income')">💚 הכנסות</button>
+    <button class="tab" onclick="showTab('budget')">🎯 תקציב</button>
     <button class="tab" onclick="showTab('ai')">🤖 ניתוח AI</button>
     <button class="tab" onclick="showTab('history')">📈 היסטוריה</button>
     <button class="tab" onclick="showTab('import')">📥 ייבוא</button>
@@ -1064,6 +1148,112 @@ window._onAuthStateChanged = onAuthStateChanged;
     </div>
   </div>
 
+  <!-- INCOME PANEL -->
+  <div id="panel-income" class="panel">
+
+    <!-- Add income form -->
+    <div class="history-card">
+      <div class="history-title">➕ הוסף הכנסה</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>תאריך</label>
+          <input type="date" id="incDate">
+        </div>
+        <div class="form-group">
+          <label>תיאור</label>
+          <input type="text" id="incDesc" placeholder="משכורת, פרילנס, שכ״ד...">
+        </div>
+        <div class="form-group">
+          <label>סכום (₪)</label>
+          <input type="number" id="incAmount" placeholder="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>מקור הכנסה</label>
+          <select id="incCat">
+            <option value="משכורת">💼 משכורת</option>
+            <option value="פרילנס">💻 פרילנס / עצמאי</option>
+            <option value="שכר דירה">🏠 שכר דירה</option>
+            <option value="השקעות">📈 השקעות / דיבידנד</option>
+            <option value="בונוס">🎁 בונוס</option>
+            <option value="מתנה">🎀 מתנה</option>
+            <option value="החזר">↩️ החזר כספי</option>
+            <option value="אחר">📦 אחר</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex-row mt16">
+        <button class="btn btn-primary" style="background:var(--inc-accent);box-shadow:0 4px 16px rgba(67,233,123,0.25)" onclick="addIncome()">➕ הוסף הכנסה</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid mt16" id="incStatsGrid">
+      <div class="empty-state" style="padding:20px;grid-column:1/-1"><p>הוסף הכנסות כדי לראות סיכום.</p></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid" id="incChartsGrid" style="display:none">
+      <div class="chart-card">
+        <div class="chart-title">הכנסות לפי מקור</div>
+        <div class="chart-wrap"><canvas id="incSourceChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">הכנסות vs הוצאות</div>
+        <div class="chart-wrap"><canvas id="incVsExpChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Income list -->
+    <div class="table-card" id="incTableWrap" style="display:none">
+      <div class="table-header">
+        <div class="table-title">כל ההכנסות <span id="incCountBadge" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>תאריך</th><th>תיאור</th><th>מקור</th><th>סכום</th><th style="width:50px"></th></tr></thead>
+          <tbody id="incTable"></tbody>
+          <tfoot id="incFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUDGET PANEL -->
+  <div id="panel-budget" class="panel">
+
+    <!-- Budget overview -->
+    <div id="budgetEmpty" class="empty-state">
+      <div class="big">🎯</div>
+      <p>ייבא הוצאות תחילה, ואז הגדר תקציב לכל קטגוריה.</p>
+    </div>
+
+    <div id="budgetContent" style="display:none">
+      <!-- Summary cards -->
+      <div class="stats-grid" id="budgetStatsGrid"></div>
+
+      <!-- Smart suggestions banner -->
+      <div id="budgetSuggestBanner" class="history-card mt16" style="border-color:rgba(108,99,255,0.4);background:rgba(108,99,255,0.06)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="history-title" style="margin:0">✨ הצעות חכמות</div>
+          <button class="btn btn-outline btn-sm" onclick="applySuggestions()">החל הכל</button>
+        </div>
+        <div id="budgetSuggestList"></div>
+      </div>
+
+      <!-- Per-category budget sliders -->
+      <div class="history-card mt16">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="history-title" style="margin:0">📋 תקציב לפי קטגוריה</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="resetBudgets()">איפוס</button>
+            <button class="btn btn-primary btn-sm" onclick="saveBudgets()">💾 שמור</button>
+          </div>
+        </div>
+        <div id="budgetCatList"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1074,7 +1264,9 @@ let state = {
   transactions: [],
   allTransactions: [],
   months: {},
-  files: [],            // [{ id, name, date, txCount, months[] }]
+  files: [],
+  incomes: [],        // [{ id, date, desc, amount, cat }]
+  budgets: {},        // { cat: amount }
   currentMonth: null,
   dateRange: { from: null, to: null },
   apiKey: localStorage.getItem('hachama_apikey') || '',
@@ -1098,6 +1290,17 @@ const CAT_COLORS = {
   'ספורט':    '#20c997',
   'תקשורת':   '#4dabf7',
   'חיסכון':   '#51cf66',
+};
+
+const INC_COLORS = {
+  'משכורת':    '#22c55e',
+  'פרילנס':    '#06d6a0',
+  'שכר דירה': '#4dabf7',
+  'השקעות':   '#a855f7',
+  'בונוס':     '#ffd43b',
+  'מתנה':      '#ff6b35',
+  'החזר':      '#74c0fc',
+  'אחר':       '#adb5bd',
 };
 
 const CAT_KEYWORDS = {
@@ -1131,27 +1334,19 @@ function getUserDocRef() {
 }
 
 async function saveState() {
-  // Always save API keys to localStorage (not to cloud — security)
   const ref = getUserDocRef();
+  const payload = { months: state.months, files: state.files, incomes: state.incomes, budgets: state.budgets, updatedAt: new Date().toISOString() };
   if (ref) {
     try {
       const { setDoc } = window._firestoreFns;
-      const payload = {
-        months: state.months,
-        files: state.files,
-        updatedAt: new Date().toISOString()
-      };
-      // Firestore documents have a 1MB limit — chunk months if needed
       await setDoc(ref, payload, { merge: true });
     } catch(e) {
       console.error('Firebase save error:', e);
       showToast('⚠️ שגיאה בשמירה ל-Firebase');
-      // Fallback to localStorage
-      try { localStorage.setItem('finish_state', JSON.stringify({ months: state.months, files: state.files })); } catch(_){}
+      try { localStorage.setItem('finish_state', JSON.stringify(payload)); } catch(_){}
     }
   } else {
-    // Not logged in — use localStorage
-    try { localStorage.setItem('finish_state', JSON.stringify({ months: state.months, files: state.files })); } catch(e){}
+    try { localStorage.setItem('finish_state', JSON.stringify(payload)); } catch(e){}
   }
 }
 
@@ -1162,13 +1357,14 @@ async function loadFromFirebase(uid) {
     const snap = await getDoc(ref);
     if (snap.exists()) {
       const data = snap.data();
-      if (data.months) state.months = data.months;
-      if (data.files)  state.files  = data.files;
+      if (data.months)  state.months  = data.months;
+      if (data.files)   state.files   = data.files;
+      if (data.incomes) state.incomes = data.incomes;
+      if (data.budgets) state.budgets = data.budgets;
       rebuildAllTransactions();
       afterLoad();
       showToast('☁️ נתונים נטענו מהענן');
     } else {
-      // No cloud data — check localStorage
       loadFromLocalStorage();
     }
   } catch(e) {
@@ -1180,8 +1376,10 @@ async function loadFromFirebase(uid) {
 function loadFromLocalStorage() {
   try {
     const s = JSON.parse(localStorage.getItem('finish_state') || '{}');
-    if (s.months) state.months = s.months;
-    if (s.files)  state.files  = s.files;
+    if (s.months)  state.months  = s.months;
+    if (s.files)   state.files   = s.files;
+    if (s.incomes) state.incomes = s.incomes;
+    if (s.budgets) state.budgets = s.budgets;
     rebuildAllTransactions();
     afterLoad();
   } catch(e) {}
@@ -1197,6 +1395,8 @@ function afterLoad() {
   renderMonthSummary();
   renderFileRegistry();
   renderDashboard();
+  renderIncome();
+  renderBudget();
 }
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
@@ -1265,13 +1465,14 @@ function applyDateRange(silent) {
   state.currentMonth = months[months.length - 1] || null;
 
   if (!silent) {
-    // Refresh active panel
     const activePanel = document.querySelector('.panel.active');
     if (activePanel) {
       const id = activePanel.id.replace('panel-','');
-      if (id === 'dashboard') renderDashboard();
+      if (id === 'dashboard')    renderDashboard();
       if (id === 'transactions') renderTransactions();
-      if (id === 'history') renderHistory();
+      if (id === 'history')      renderHistory();
+      if (id === 'income')       renderIncome();
+      if (id === 'budget')       renderBudget();
     }
     renderMonthSummary();
     showToast(from || to ? `📅 מציג ${state.transactions.length} עסקאות בטווח` : '📅 מציג את כל הנתונים');
@@ -1285,9 +1486,11 @@ function showTab(id, btn) {
   document.getElementById('panel-'+id).classList.add('active');
   const clickedBtn = btn || event.target;
   if (clickedBtn) clickedBtn.classList.add('active');
-  if (id === 'dashboard') renderDashboard();
+  if (id === 'dashboard')    renderDashboard();
   if (id === 'transactions') renderTransactions();
-  if (id === 'history') renderHistory();
+  if (id === 'history')      renderHistory();
+  if (id === 'income')       renderIncome();
+  if (id === 'budget')       renderBudget();
 }
 
 // ─── FILE IMPORT ──────────────────────────────────────────────────────────────
@@ -2198,6 +2401,266 @@ function addMessage(text, type) {
   return div;
 }
 
+// ─── INCOME ──────────────────────────────────────────────────────────────────
+let incSourceChartInst, incVsExpChartInst;
+
+function addIncome() {
+  const date   = document.getElementById('incDate').value;
+  const desc   = document.getElementById('incDesc').value.trim();
+  const amount = parseFloat(document.getElementById('incAmount').value);
+  const cat    = document.getElementById('incCat').value;
+  if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
+  state.incomes.push({ id: Date.now() + Math.random(), date, desc, amount, cat });
+  saveState();
+  document.getElementById('incDesc').value = '';
+  document.getElementById('incAmount').value = '';
+  renderIncome();
+  showToast(`✅ הכנסה נוספה: ${desc} — ${fmtILS(amount)}`);
+}
+
+function deleteIncome(id) {
+  const inc = state.incomes.find(i => i.id === id);
+  if (!inc) return;
+  if (!confirm(`למחוק "${inc.desc}" — ${fmtILS(inc.amount)}?`)) return;
+  state.incomes = state.incomes.filter(i => i.id !== id);
+  saveState();
+  renderIncome();
+  showToast('🗑️ הכנסה נמחקה');
+}
+
+function renderIncome() {
+  // Filter by date range
+  const from = state.dateRange.from;
+  const to   = state.dateRange.to;
+  const incs = state.incomes.filter(i => (!from || i.date >= from) && (!to || i.date <= to))
+                             .sort((a,b) => b.date.localeCompare(a.date));
+
+  const totalInc = incs.reduce((s,i) => s+i.amount, 0);
+  const totalExp = state.transactions.reduce((s,t) => s+t.amount, 0);
+  const balance  = totalInc - totalExp;
+  const savePct  = totalInc > 0 ? (balance / totalInc * 100).toFixed(1) : 0;
+
+  // Stats
+  const statsEl = document.getElementById('incStatsGrid');
+  if (incs.length === 0) {
+    statsEl.innerHTML = '<div class="empty-state" style="padding:20px;grid-column:1/-1"><p>הוסף הכנסות כדי לראות סיכום.</p></div>';
+    document.getElementById('incChartsGrid').style.display = 'none';
+    document.getElementById('incTableWrap').style.display  = 'none';
+    return;
+  }
+  statsEl.innerHTML = `
+    <div class="stat-card c3"><div class="stat-label">סה"כ הכנסות</div><div class="stat-value c3">${fmtILS(totalInc)}</div><div class="stat-sub">${incs.length} רשומות</div></div>
+    <div class="stat-card c2"><div class="stat-label">סה"כ הוצאות</div><div class="stat-value c2">${fmtILS(totalExp)}</div></div>
+    <div class="stat-card ${balance>=0?'c3':'c2'}"><div class="stat-label">מאזן</div><div class="stat-value ${balance>=0?'c3':'c2'}">${fmtILS(balance)}</div><div class="stat-sub">${savePct}% חיסכון</div></div>
+    <div class="stat-card c1"><div class="stat-label">שיעור חיסכון</div><div class="stat-value c1" style="font-size:22px">${savePct}%</div><div class="stat-sub">מההכנסות</div></div>
+  `;
+
+  document.getElementById('incChartsGrid').style.display = '';
+  document.getElementById('incTableWrap').style.display  = '';
+  document.getElementById('incCountBadge').textContent   = `(${incs.length})`;
+
+  // Source donut
+  const byCat = {};
+  incs.forEach(i => { byCat[i.cat] = (byCat[i.cat]||0) + i.amount; });
+  const catEntries = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  if (incSourceChartInst) incSourceChartInst.destroy();
+  incSourceChartInst = new Chart(document.getElementById('incSourceChart'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(e=>e[0]),
+      datasets: [{ data: catEntries.map(e=>e[1]),
+        backgroundColor: catEntries.map(e => INC_COLORS[e[0]]||'#74c0fc'),
+        borderColor: '#0a0a0f', borderWidth: 3, hoverOffset: 8 }]
+    },
+    options: {
+      plugins: { legend: { position:'right', labels:{ color:'#e8e8f0', font:{size:12}, boxWidth:12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtILS(ctx.raw)}` } } },
+      cutout: '60%', responsive: true, maintainAspectRatio: false
+    }
+  });
+
+  // Inc vs Exp bar by month
+  const allMonths = [...new Set([
+    ...state.incomes.map(i => i.date.substring(0,7)),
+    ...state.allTransactions.map(t => t.date.substring(0,7))
+  ])].sort().slice(-6);
+  const incByMonth = {}, expByMonth = {};
+  allMonths.forEach(m => {
+    incByMonth[m] = state.incomes.filter(i => i.date.startsWith(m)).reduce((s,i)=>s+i.amount,0);
+    expByMonth[m] = (state.months[m]||[]).reduce((s,t)=>s+t.amount,0);
+  });
+  if (incVsExpChartInst) incVsExpChartInst.destroy();
+  incVsExpChartInst = new Chart(document.getElementById('incVsExpChart'), {
+    type: 'bar',
+    data: {
+      labels: allMonths.map(m => formatMonthHe(m).split(' ')[0]),
+      datasets: [
+        { label: 'הכנסות', data: allMonths.map(m=>incByMonth[m]||0), backgroundColor: 'rgba(34,197,94,0.7)', borderRadius:4 },
+        { label: 'הוצאות', data: allMonths.map(m=>expByMonth[m]||0), backgroundColor: 'rgba(255,77,109,0.7)', borderRadius:4 }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color:'#e8e8f0', font:{size:11} } } },
+      scales: { x:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{display:false} }, y:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{color:'rgba(42,42,56,0.8)'} } },
+      responsive: true, maintainAspectRatio: false
+    }
+  });
+
+  // Table
+  document.getElementById('incTable').innerHTML = incs.map(i => {
+    const col = INC_COLORS[i.cat] || '#74c0fc';
+    return `<tr>
+      <td style="color:var(--text2);font-size:12px">${formatDateHe(i.date)}</td>
+      <td style="font-weight:500">${i.desc}</td>
+      <td><span class="inc-badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${i.cat}</span></td>
+      <td class="amount-col" style="color:var(--inc-accent);font-family:'Space Mono',monospace">${fmtILS(i.amount)}</td>
+      <td style="text-align:center">
+        <button onclick="deleteIncome(${i.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px"
+          onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('incFoot').innerHTML = `
+    <tr>
+      <td colspan="3" class="foot-label">סה"כ הכנסות — ${incs.length} רשומות</td>
+      <td class="foot-total" style="color:var(--inc-accent)">${fmtILS(totalInc)}</td>
+      <td></td>
+    </tr>`;
+}
+
+// ─── BUDGET ───────────────────────────────────────────────────────────────────
+function renderBudget() {
+  const txs = state.transactions;
+  if (!txs.length) {
+    document.getElementById('budgetEmpty').style.display  = 'block';
+    document.getElementById('budgetContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('budgetEmpty').style.display  = 'none';
+  document.getElementById('budgetContent').style.display = 'block';
+
+  // Build per-cat spend
+  const catSpend = {};
+  txs.forEach(t => { catSpend[t.cat] = (catSpend[t.cat]||0) + t.amount; });
+  const totalSpend = txs.reduce((s,t)=>s+t.amount,0);
+  const totalBudget = Object.values(state.budgets).reduce((s,v)=>s+(v||0),0);
+  const totalInc = state.incomes.filter(i => {
+    const from = state.dateRange.from, to = state.dateRange.to;
+    return (!from || i.date >= from) && (!to || i.date <= to);
+  }).reduce((s,i)=>s+i.amount, 0);
+
+  // Stats
+  const overBudget = Object.entries(catSpend).filter(([c,v]) => state.budgets[c] && v > state.budgets[c]).length;
+  document.getElementById('budgetStatsGrid').innerHTML = `
+    <div class="stat-card c1"><div class="stat-label">תקציב כולל</div><div class="stat-value c1">${fmtILS(totalBudget)}</div><div class="stat-sub">${Object.keys(state.budgets).length} קטגוריות</div></div>
+    <div class="stat-card c2"><div class="stat-label">הוצא בפועל</div><div class="stat-value c2">${fmtILS(totalSpend)}</div><div class="stat-sub">${totalBudget ? ((totalSpend/totalBudget)*100).toFixed(0)+'% מהתקציב' : ''}</div></div>
+    <div class="stat-card ${overBudget?'c2':'c3'}"><div class="stat-label">חריגות</div><div class="stat-value ${overBudget?'c2':'c3'}">${overBudget}</div><div class="stat-sub">קטגוריות מעל תקציב</div></div>
+    <div class="stat-card c4"><div class="stat-label">יתרה</div><div class="stat-value c4">${fmtILS(totalBudget - totalSpend)}</div><div class="stat-sub">נותר מהתקציב</div></div>
+  `;
+
+  // Smart suggestions
+  // Get historical avg from ALL months
+  const allCatSpend = {};
+  const monthCount = Object.keys(state.months).length || 1;
+  Object.values(state.months).flat().forEach(t => { allCatSpend[t.cat] = (allCatSpend[t.cat]||0) + t.amount; });
+  const suggestions = Object.entries(allCatSpend).map(([cat, total]) => {
+    const avg = total / monthCount;
+    const current = state.budgets[cat] || 0;
+    const suggested = Math.ceil(avg * 1.1 / 50) * 50; // round up to nearest 50, add 10% buffer
+    const reason = avg > 0
+      ? `ממוצע חודשי ${fmtILS(avg)} (${monthCount} חודשים)`
+      : 'קטגוריה חדשה';
+    return { cat, avg, suggested, current, reason };
+  }).sort((a,b) => b.avg - a.avg);
+
+  document.getElementById('budgetSuggestList').innerHTML = suggestions.slice(0, 8).map(s => `
+    <div class="suggest-row">
+      <div class="suggest-cat">${s.cat}</div>
+      <div class="suggest-reason">${s.reason}</div>
+      <div class="suggest-amount">${fmtILS(s.suggested)}</div>
+      <button class="btn btn-outline btn-sm" onclick="applyOneSuggestion('${s.cat}', ${s.suggested})">החל</button>
+    </div>
+  `).join('');
+
+  // Per-category rows
+  const cats = [...new Set([...Object.keys(catSpend), ...Object.keys(state.budgets)])].sort();
+  document.getElementById('budgetCatList').innerHTML = cats.map(cat => {
+    const spent   = catSpend[cat] || 0;
+    const budget  = state.budgets[cat] || 0;
+    const pct     = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    const over    = budget > 0 && spent > budget;
+    const warn    = budget > 0 && spent / budget > 0.8;
+    const barColor = over ? 'var(--accent2)' : warn ? 'var(--accent4)' : 'var(--accent3)';
+    const pctClass = over ? 'over' : warn ? 'warn' : 'ok';
+    const col = CAT_COLORS[cat] || '#78909c';
+    return `<div class="budget-row">
+      <div class="budget-cat-name" style="color:${col}">${cat}</div>
+      <div style="font-size:12px;color:var(--text2);white-space:nowrap;min-width:70px">${fmtILS(spent)} הוצא</div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar-spent" style="width:${pct.toFixed(0)}%;background:${barColor}"></div>
+      </div>
+      <div class="budget-input-wrap">
+        <span style="font-size:12px;color:var(--text3)">₪</span>
+        <input class="budget-input" type="number" id="bud_${cat}" value="${budget||''}" placeholder="0" min="0" step="50"
+          oninput="previewBudget('${cat}', this.value)">
+      </div>
+      <div class="budget-pct ${pctClass}" id="budpct_${cat}">
+        ${budget > 0 ? `${(spent/budget*100).toFixed(0)}%` : '—'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewBudget(cat, val) {
+  const spent = state.transactions.filter(t=>t.cat===cat).reduce((s,t)=>s+t.amount,0);
+  const budget = parseFloat(val) || 0;
+  const pctEl = document.getElementById('budpct_' + cat);
+  if (!pctEl) return;
+  if (budget <= 0) { pctEl.textContent = '—'; pctEl.className = 'budget-pct'; return; }
+  const pct = (spent / budget * 100).toFixed(0);
+  pctEl.textContent = pct + '%';
+  pctEl.className = 'budget-pct ' + (spent > budget ? 'over' : spent/budget > 0.8 ? 'warn' : 'ok');
+}
+
+function saveBudgets() {
+  const cats = [...new Set([...Object.keys({}), ...document.querySelectorAll('[id^="bud_"]')].map(el => typeof el === 'string' ? el : el.id.replace('bud_','')))];
+  document.querySelectorAll('[id^="bud_"]').forEach(el => {
+    const cat = el.id.replace('bud_', '');
+    const val = parseFloat(el.value) || 0;
+    if (val > 0) state.budgets[cat] = val;
+    else delete state.budgets[cat];
+  });
+  saveState();
+  renderBudget();
+  showToast('✅ תקציב נשמר!');
+}
+
+function applyOneSuggestion(cat, amount) {
+  state.budgets[cat] = amount;
+  const input = document.getElementById('bud_' + cat);
+  if (input) { input.value = amount; previewBudget(cat, amount); }
+  showToast(`✅ תקציב ${cat}: ${fmtILS(amount)}`);
+}
+
+function applySuggestions() {
+  document.querySelectorAll('.suggest-amount').forEach((el, i) => {
+    const row  = el.closest('.suggest-row');
+    const cat  = row.querySelector('.suggest-cat').textContent;
+    const amt  = parseInt(el.textContent.replace(/[^\d]/g,''));
+    if (cat && amt) { state.budgets[cat] = amt; }
+  });
+  saveBudgets();
+  showToast('✅ כל ההצעות הוחלו!');
+}
+
+function resetBudgets() {
+  if (!confirm('לאפס את כל התקציבים?')) return;
+  state.budgets = {};
+  saveState();
+  renderBudget();
+  showToast('🔄 תקציבים אופסו');
+}
+
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function fmtILS(n) { return '₪' + (n||0).toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
 function formatMonthHe(m) {
@@ -2219,10 +2682,9 @@ function showToast(msg) {
 }
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
-// Auth listener (above) handles data loading.
-// Just set up the UI defaults:
 document.querySelector('.tab').classList.add('active');
-document.getElementById('mDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('mDate').value   = new Date().toISOString().split('T')[0];
+document.getElementById('incDate').value = new Date().toISOString().split('T')[0];
 setTimeout(() => { onProviderChange(); }, 300);
 renderFileRegistry();
 </script>
