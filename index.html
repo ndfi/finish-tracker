@@ -1292,6 +1292,27 @@ const CAT_COLORS = {
   'חיסכון':   '#51cf66',
 };
 
+// Dynamic color palette — assigned to unknown categories consistently
+const _DYNAMIC_PALETTE = [
+  '#6c63ff','#ff4d6d','#06d6a0','#ffa552','#00b4fc',
+  '#e040fb','#ff6b35','#69db7c','#ffd43b','#fa5252',
+  '#cc5de8','#20c997','#4dabf7','#51cf66','#f06595',
+  '#74c0fc','#63e6be','#ffec99','#a9e34b','#da77f2',
+];
+const _dynamicCatMap = {};
+let   _dynamicCatIdx = 0;
+
+function getCatColor(cat) {
+  if (!cat) return '#adb5bd';
+  if (CAT_COLORS[cat]) return CAT_COLORS[cat];
+  if (_dynamicCatMap[cat]) return _dynamicCatMap[cat];
+  // Assign next color from palette, cycling if needed
+  const color = _DYNAMIC_PALETTE[_dynamicCatIdx % _DYNAMIC_PALETTE.length];
+  _dynamicCatIdx++;
+  _dynamicCatMap[cat] = color;
+  return color;
+}
+
 const INC_COLORS = {
   'משכורת':    '#22c55e',
   'פרילנס':    '#06d6a0',
@@ -1760,8 +1781,7 @@ function renderDashboard() {
 
   // Category chart — with visible borders between slices
   const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const FALLBACK_COLORS = ['#a855f7','#ec4899','#14b8a6','#f59e0b','#3b82f6','#ef4444','#22c55e','#f97316'];
-  const catColors = catEntries.map((e,i) => CAT_COLORS[e[0]] || FALLBACK_COLORS[i % FALLBACK_COLORS.length]);
+  const catColors = catEntries.map((e,i) => getCatColor(e[0]));
   if (catChartInst) catChartInst.destroy();
   catChartInst = new Chart(document.getElementById('catChart'), {
     type: 'doughnut',
@@ -1835,7 +1855,7 @@ function renderDashboard() {
     type: 'bar',
     data: {
       labels: top10.map(t => t.desc.length > 20 ? t.desc.slice(0,20)+'…' : t.desc),
-      datasets: [{ data: top10.map(t=>t.amount), backgroundColor: top10.map(t=>CAT_COLORS[t.cat]||'#78909c'), borderRadius:6, borderSkipped:false }]
+      datasets: [{ data: top10.map(t=>t.amount), backgroundColor: top10.map(t=>getCatColor(t.cat)), borderRadius:6, borderSkipped:false }]
     },
     options: { indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{color:'#5a5a72',font:{size:11}}, grid:{color:'rgba(42,42,56,0.8)'} }, y:{ ticks:{color:'#9090a8',font:{size:12}}, grid:{display:false} } }, responsive:true, maintainAspectRatio:false }
   });
@@ -1986,7 +2006,7 @@ function filterTx() {
 
   document.getElementById('txCountBadge').textContent = `(${txs.length})`;
   document.getElementById('txTable').innerHTML = txs.map(t => {
-    const col = CAT_COLORS[t.cat] || '#78909c';
+    const col = getCatColor(t.cat);
     const tid = String(t.id).replace(/[^a-zA-Z0-9_]/g,'_');
     return `<tr id="txrow_${tid}">
       <td style="color:var(--text2);font-size:12px">${formatDateHe(t.date)}</td>
@@ -2027,7 +2047,7 @@ function openCatEdit(txId, currentCat, desc) {
   const existingCats = [...new Set([...ALL_CATS, ...state.allTransactions.map(t=>t.cat)])].sort();
 
   const chips = existingCats.map(c => {
-    const col = CAT_COLORS[c] || '#78909c';
+    const col = getCatColor(c);
     const sel = c === currentCat ? 'selected' : '';
     return `<span class="cat-chip ${sel}" style="background:${col}33;color:${col};border-color:${c===currentCat?col:'transparent'}"
       onclick="document.querySelectorAll('.cat-chip').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('catCustom').value=''"
@@ -2410,7 +2430,8 @@ function addIncome() {
   const amount = parseFloat(document.getElementById('incAmount').value);
   const cat    = document.getElementById('incCat').value;
   if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
-  state.incomes.push({ id: Date.now() + Math.random(), date, desc, amount, cat });
+  // Use string id to avoid floating point issues
+  state.incomes.push({ id: 'inc_' + Date.now(), date, desc, amount, cat });
   saveState();
   document.getElementById('incDesc').value = '';
   document.getElementById('incAmount').value = '';
@@ -2419,21 +2440,18 @@ function addIncome() {
 }
 
 function deleteIncome(id) {
-  const inc = state.incomes.find(i => i.id === id);
+  const inc = state.incomes.find(i => String(i.id) === String(id));
   if (!inc) return;
   if (!confirm(`למחוק "${inc.desc}" — ${fmtILS(inc.amount)}?`)) return;
-  state.incomes = state.incomes.filter(i => i.id !== id);
+  state.incomes = state.incomes.filter(i => String(i.id) !== String(id));
   saveState();
   renderIncome();
   showToast('🗑️ הכנסה נמחקה');
 }
 
 function renderIncome() {
-  // Filter by date range
-  const from = state.dateRange.from;
-  const to   = state.dateRange.to;
-  const incs = state.incomes.filter(i => (!from || i.date >= from) && (!to || i.date <= to))
-                             .sort((a,b) => b.date.localeCompare(a.date));
+  // Show ALL incomes (not filtered by dateRange — income tab is independent)
+  const incs = [...state.incomes].sort((a,b) => b.date.localeCompare(a.date));
 
   const totalInc = incs.reduce((s,i) => s+i.amount, 0);
   const totalExp = state.transactions.reduce((s,t) => s+t.amount, 0);
@@ -2509,13 +2527,14 @@ function renderIncome() {
   // Table
   document.getElementById('incTable').innerHTML = incs.map(i => {
     const col = INC_COLORS[i.cat] || '#74c0fc';
+    const safeId = JSON.stringify(String(i.id));
     return `<tr>
       <td style="color:var(--text2);font-size:12px">${formatDateHe(i.date)}</td>
       <td style="font-weight:500">${i.desc}</td>
       <td><span class="inc-badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${i.cat}</span></td>
       <td class="amount-col" style="color:var(--inc-accent);font-family:'Space Mono',monospace">${fmtILS(i.amount)}</td>
       <td style="text-align:center">
-        <button onclick="deleteIncome(${i.id})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px"
+        <button onclick="deleteIncome(${safeId})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px"
           onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text3)'">✕</button>
       </td>
     </tr>`;
@@ -2592,7 +2611,7 @@ function renderBudget() {
     const warn    = budget > 0 && spent / budget > 0.8;
     const barColor = over ? 'var(--accent2)' : warn ? 'var(--accent4)' : 'var(--accent3)';
     const pctClass = over ? 'over' : warn ? 'warn' : 'ok';
-    const col = CAT_COLORS[cat] || '#78909c';
+    const col = getCatColor(cat);
     return `<div class="budget-row">
       <div class="budget-cat-name" style="color:${col}">${cat}</div>
       <div style="font-size:12px;color:var(--text2);white-space:nowrap;min-width:70px">${fmtILS(spent)} הוצא</div>
