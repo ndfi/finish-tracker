@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -801,9 +801,6 @@ window._onAuthStateChanged = onAuthStateChanged;
     tfoot tr td { padding: 10px; font-size: 12px; }
     .foot-total { font-size: 14px !important; }
 
-    /* Hide date column on very small screens to save space */
-    th:first-child, td:first-child { display: none; }
-
     /* Category badge — smaller */
     .cat-badge { font-size: 10px; padding: 2px 7px; }
 
@@ -1014,6 +1011,43 @@ window._onAuthStateChanged = onAuthStateChanged;
       <p>ייבא קובץ הוצאות כדי לראות את העסקאות.</p>
     </div>
     <div id="txContent" style="display:none">
+
+      <!-- Quick-add expense form -->
+      <div class="history-card" style="margin-bottom:16px">
+        <div class="history-title" style="margin-bottom:12px">➕ הוסף הוצאה מהירה</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>תאריך</label>
+            <input type="date" id="txQuickDate">
+          </div>
+          <div class="form-group">
+            <label>תיאור</label>
+            <input type="text" id="txQuickDesc" placeholder="שם עסק / תיאור">
+          </div>
+          <div class="form-group">
+            <label>סכום (₪)</label>
+            <input type="number" id="txQuickAmount" placeholder="0" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label>קטגוריה</label>
+            <select id="txQuickCat">
+              <option value="מזון">🛒 מזון</option>
+              <option value="מסעדות">🍽️ מסעדות</option>
+              <option value="תחבורה">🚗 תחבורה</option>
+              <option value="בריאות">💊 בריאות</option>
+              <option value="בידור">🎬 בידור</option>
+              <option value="חשבונות">🏠 חשבונות</option>
+              <option value="ביגוד">👔 ביגוד</option>
+              <option value="חינוך">📚 חינוך</option>
+              <option value="אחר">📦 אחר</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex-row mt16">
+          <button class="btn btn-primary" onclick="addQuickTx()">➕ הוסף הוצאה</button>
+        </div>
+      </div>
+
       <div class="table-card">
         <div class="table-header">
           <div class="table-title">כל העסקאות <span id="txCountBadge" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
@@ -1407,12 +1441,15 @@ function loadFromLocalStorage() {
 }
 
 function afterLoad() {
-  const allDates = state.allTransactions.map(t=>t.date).sort();
-  if (allDates.length) {
-    document.getElementById('rangeFrom').value = allDates[0];
-    document.getElementById('rangeTo').value = allDates[allDates.length-1];
-    applyDateRange(true);
-  }
+  // Default range: last 30 days
+  const today = new Date();
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const toStr   = today.toISOString().split('T')[0];
+  const fromStr = monthAgo.toISOString().split('T')[0];
+  document.getElementById('rangeFrom').value = fromStr;
+  document.getElementById('rangeTo').value   = toStr;
+  applyDateRange(true);
   renderMonthSummary();
   renderFileRegistry();
   renderDashboard();
@@ -2009,14 +2046,26 @@ function filterTx() {
     const col = getCatColor(t.cat);
     const tid = String(t.id).replace(/[^a-zA-Z0-9_]/g,'_');
     return `<tr id="txrow_${tid}">
-      <td style="color:var(--text2);font-size:12px">${formatDateHe(t.date)}</td>
+      <td style="color:var(--text2);font-size:12px;white-space:nowrap">${formatDateHe(t.date)}</td>
       <td style="font-weight:500">${t.desc}</td>
       <td>
         <span class="cat-badge" title="לחץ לשינוי קטגוריה"
           style="background:${col}22;color:${col};border:1px solid ${col}44;cursor:pointer"
           onclick='openCatEdit(${JSON.stringify(t.id)}, ${JSON.stringify(t.cat)}, ${JSON.stringify(t.desc)})'>${t.cat} ✎</span>
       </td>
-      <td class="amount-col amount-neg">${fmtILS(t.amount)}</td>
+      <td class="amount-col">
+        <span id="amt_disp_${tid}" class="amount-neg" style="cursor:pointer" title="לחץ לעריכה"
+          onclick="startEditAmount('${tid}', ${t.amount}, ${JSON.stringify(t.id)})">${fmtILS(t.amount)}</span>
+        <span id="amt_edit_${tid}" style="display:none">
+          <input type="number" step="0.01" min="0" value="${t.amount}"
+            style="width:80px;background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:3px 7px;border-radius:6px;font-size:13px;font-family:'Space Mono',monospace;outline:none"
+            onkeydown="if(event.key==='Enter')saveEditAmount('${tid}',${JSON.stringify(t.id)},this.value);if(event.key==='Escape')cancelEditAmount('${tid}',${t.amount})">
+          <button onclick="saveEditAmount('${tid}',${JSON.stringify(t.id)},document.querySelector('#amt_edit_${tid} input').value)"
+            style="background:var(--accent3);color:#000;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">✓</button>
+          <button onclick="cancelEditAmount('${tid}',${t.amount})"
+            style="background:transparent;color:var(--text3);border:none;cursor:pointer;font-size:12px;padding:2px 4px">✕</button>
+        </span>
+      </td>
       <td style="text-align:center">
         <button onclick="deleteTx(${JSON.stringify(t.id)})" title="מחק עסקה"
           style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px;transition:color 0.2s"
@@ -2034,6 +2083,50 @@ function filterTx() {
       <td class="foot-total">${fmtILS(filtTotal)}</td>
       <td></td>
     </tr>` : '';
+}
+
+// ─── QUICK ADD TX FROM TRANSACTIONS PANEL ────────────────────────────────────
+function addQuickTx() {
+  const date   = document.getElementById('txQuickDate').value;
+  const desc   = document.getElementById('txQuickDesc').value.trim();
+  const amount = parseFloat(document.getElementById('txQuickAmount').value);
+  const cat    = document.getElementById('txQuickCat').value;
+  if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
+  const monthKey = date.substring(0,7);
+  if (!state.months[monthKey]) state.months[monthKey] = [];
+  state.months[monthKey].push({ id: Date.now(), date, desc, amount, cat });
+  rebuildAllTransactions();
+  saveState();
+  document.getElementById('txQuickDesc').value   = '';
+  document.getElementById('txQuickAmount').value = '';
+  filterTx();
+  showToast(`✅ הוספה: ${desc} — ${fmtILS(amount)}`);
+}
+
+// ─── INLINE AMOUNT EDITING ────────────────────────────────────────────────────
+function startEditAmount(tid, currentAmount, txId) {
+  document.getElementById('amt_disp_' + tid).style.display = 'none';
+  document.getElementById('amt_edit_' + tid).style.display = 'inline-flex';
+  const inp = document.querySelector('#amt_edit_' + tid + ' input');
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function saveEditAmount(tid, txId, newVal) {
+  const amount = parseFloat(newVal);
+  if (!amount || amount <= 0) { showToast('⚠️ סכום לא תקין'); return; }
+  for (const m of Object.keys(state.months)) {
+    const tx = state.months[m].find(t => String(t.id) === String(txId));
+    if (tx) { tx.amount = amount; break; }
+  }
+  rebuildAllTransactions();
+  saveState();
+  filterTx();
+  showToast(`✅ סכום עודכן → ${fmtILS(amount)}`);
+}
+
+function cancelEditAmount(tid, originalAmount) {
+  document.getElementById('amt_disp_' + tid).style.display = 'inline';
+  document.getElementById('amt_edit_' + tid).style.display = 'none';
 }
 
 // ─── CATEGORY EDIT & DELETE ───────────────────────────────────────────────────
@@ -2524,15 +2617,15 @@ function renderIncome() {
     }
   });
 
-  // Table
+  // Table — sorted newest first (already sorted in incs)
   document.getElementById('incTable').innerHTML = incs.map(i => {
     const col = INC_COLORS[i.cat] || '#74c0fc';
     const safeId = JSON.stringify(String(i.id));
     return `<tr>
-      <td style="color:var(--text2);font-size:12px">${formatDateHe(i.date)}</td>
+      <td style="color:var(--text);font-size:13px;font-weight:500;white-space:nowrap">${formatDateHe(i.date)}</td>
       <td style="font-weight:500">${i.desc}</td>
       <td><span class="inc-badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${i.cat}</span></td>
-      <td class="amount-col" style="color:var(--inc-accent);font-family:'Space Mono',monospace">${fmtILS(i.amount)}</td>
+      <td class="amount-col" style="color:var(--inc-accent);font-family:'Space Mono',monospace;font-weight:700">${fmtILS(i.amount)}</td>
       <td style="text-align:center">
         <button onclick="deleteIncome(${safeId})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px"
           onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text3)'">✕</button>
@@ -2702,8 +2795,17 @@ function showToast(msg) {
 
 // ─── INIT ─────────────────────────────────────────────────────────────────────
 document.querySelector('.tab').classList.add('active');
-document.getElementById('mDate').value   = new Date().toISOString().split('T')[0];
-document.getElementById('incDate').value = new Date().toISOString().split('T')[0];
+document.getElementById('mDate').value      = new Date().toISOString().split('T')[0];
+document.getElementById('incDate').value    = new Date().toISOString().split('T')[0];
+document.getElementById('txQuickDate').value = new Date().toISOString().split('T')[0];
+// Default range: last 30 days
+(function() {
+  const today = new Date();
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  document.getElementById('rangeFrom').value = monthAgo.toISOString().split('T')[0];
+  document.getElementById('rangeTo').value   = today.toISOString().split('T')[0];
+})();
 setTimeout(() => { onProviderChange(); }, 300);
 renderFileRegistry();
 </script>
