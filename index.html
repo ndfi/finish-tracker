@@ -3,996 +3,2811 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>לוח מודעות בית כנסת</title>
-<link href="https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@400;700;900&family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet">
+<title>Finish — מעקב הוצאות</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyApV2ppN1nodo4Fa3CRpz8j_NnrTlSc-fI",
+  authDomain: "expenss-cc17b.firebaseapp.com",
+  projectId: "expenss-cc17b",
+  storageBucket: "expenss-cc17b.firebasestorage.app",
+  messagingSenderId: "923359103377",
+  appId: "1:923359103377:web:3d9702ced9cff507813230",
+  measurementId: "G-X14JSE8VZK"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
+
+// Expose to global scope so the rest of the (non-module) script can use them
+window._db = db;
+window._auth = auth;
+window._provider = provider;
+window._firestoreFns = { doc, setDoc, getDoc, onSnapshot };
+window._signInWithPopup = signInWithPopup;
+window._signOut = signOut;
+window._onAuthStateChanged = onAuthStateChanged;
+</script>
 <style>
+  @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;700;900&family=Space+Mono:wght@400;700&display=swap');
+
   :root {
-    --gold:#c8a44a; --gold-light:#e8c87a; --gold-dark:#8b6914;
-    --brown-dark:#1a0e05; --brown-mid:#2d1a0a; --brown-light:#4a2e15;
-    --parchment:#f5ead0; --text-bright:#fff8e7;
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c26;
+    --border: #2a2a38;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --accent3: #43e97b;
+    --accent4: #f7971e;
+    --inc-accent: #22c55e;
+    --text: #e8e8f0;
+    --text2: #9090a8;
+    --text3: #5a5a72;
+    --card-radius: 16px;
+    --glow: 0 0 40px rgba(108,99,255,0.15);
   }
-  *{margin:0;padding:0;box-sizing:border-box;}
-  body{background:var(--brown-dark);color:var(--text-bright);font-family:'Frank Ruhl Libre',serif;height:100vh;overflow:hidden;display:flex;flex-direction:column;}
-  body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at 20% 20%,rgba(200,164,74,.08) 0%,transparent 50%),radial-gradient(ellipse at 80% 80%,rgba(200,164,74,.06) 0%,transparent 50%),repeating-linear-gradient(45deg,transparent,transparent 30px,rgba(200,164,74,.02) 30px,rgba(200,164,74,.02) 31px);pointer-events:none;z-index:0;}
 
-  /* ── Screen layer system ── */
-  .screen{position:fixed;inset:0;z-index:10;opacity:0;pointer-events:none;transition:opacity .9s ease;}
-  .screen.active{opacity:1;pointer-events:auto;}
+  * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  /* ══ SCREEN A ══ */
-  #screenA{display:flex;flex-direction:column;}
+  body {
+    font-family: 'Heebo', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    direction: rtl;
+    overflow-x: hidden;
+  }
 
-  .shabbat-banner{display:none;background:linear-gradient(135deg,#8b6914,#c8a44a,#8b6914);color:#1a0e05;text-align:center;padding:6px;font-size:1.1rem;font-weight:900;letter-spacing:3px;flex-shrink:0;}
+  /* Background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(108,99,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(108,99,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 24px 16px 60px; }
 
   /* Header */
-  .header{background:linear-gradient(180deg,#2d1a0a,#1a0e05);border-bottom:3px solid var(--gold);box-shadow:0 4px 20px rgba(200,164,74,.3);padding:10px 30px;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:20px;flex-shrink:0;position:relative;}
-  .header::after{content:'';position:absolute;bottom:-6px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
-  .date-block{text-align:right;}
-  .hebrew-date-big{font-size:clamp(1.4rem,3vw,2.1rem);color:var(--gold-light);font-weight:900;line-height:1.2;letter-spacing:1px;}
-  .greg-date-small{font-size:clamp(.65rem,1.3vw,.85rem);color:rgba(232,200,122,.55);font-family:'Heebo',sans-serif;font-weight:300;margin-top:2px;direction:ltr;text-align:right;}
-  .parasha-badge{text-align:center;background:linear-gradient(135deg,var(--brown-light),var(--brown-mid));border:2px solid var(--gold);border-radius:50px;padding:6px 24px;font-size:clamp(.85rem,1.8vw,1.1rem);color:var(--gold-light);white-space:nowrap;}
-  .parasha-badge strong{color:var(--text-bright);font-weight:900;display:block;font-size:clamp(1rem,2.2vw,1.4rem);}
-  .omer-info{text-align:left;font-size:clamp(.85rem,1.8vw,1.1rem);color:var(--gold-light);line-height:1.5;}
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 26px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -2px;
+  }
+  .date-range-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 6px 14px;
+    transition: border-color 0.2s;
+    flex-wrap: wrap;
+  }
+  .date-range-picker:focus-within { border-color: var(--accent); }
+  .date-range-picker label { font-size: 11px; color: var(--text3); font-weight: 600; letter-spacing: 0.3px; white-space: nowrap; }
+  .date-range-picker input[type="date"] {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    outline: none;
+    cursor: pointer;
+    width: 130px;
+  }
+  .date-range-picker input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+  .date-range-sep { color: var(--text3); font-size: 12px; }
+  .date-range-apply {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 7px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: 'Heebo', sans-serif;
+    transition: background 0.2s;
+    white-space: nowrap;
+  }
+  .date-range-apply:hover { background: #7c75ff; }
+  .range-badge {
+    font-size: 11px;
+    color: var(--accent);
+    background: rgba(108,99,255,0.12);
+    border: 1px solid rgba(108,99,255,0.3);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
 
-  /* Today info panel — top-left of header */
-  .today-info {
-    text-align:left;
-    display:flex; flex-direction:column; gap:4px; justify-content:center;
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 28px;
+    width: fit-content;
   }
-  .today-holiday {
-    font-size:clamp(.85rem,1.8vw,1.15rem); font-weight:700;
-    color:var(--gold-light); line-height:1.25;
-    display:flex; align-items:center; gap:6px;
+  .tab {
+    padding: 8px 20px;
+    border-radius: 9px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text2);
+    transition: all 0.2s;
+    font-family: 'Heebo', sans-serif;
   }
-  .today-holiday-icon { font-size:1.1em; }
-  .today-tachanun {
-    display:inline-flex; align-items:center; gap:6px;
-    background:rgba(200,164,74,.18); border:1px solid rgba(200,164,74,.45);
-    border-radius:8px; padding:3px 10px;
-    font-size:clamp(.72rem,1.3vw,.88rem); font-weight:700;
-    color:#e8c87a; letter-spacing:.5px;
-    width:fit-content;
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(108,99,255,0.35);
   }
-  .today-tachanun.no-tachanun {
-    background:rgba(255,180,0,.12); border-color:rgba(255,200,0,.4);
-    color:#ffe070;
-  }
-  .today-next-holiday {
-    font-size:clamp(.65rem,1.2vw,.8rem); color:rgba(232,200,122,.55);
-    font-family:'Heebo',sans-serif; font-weight:300;
-  }
-  /* omer small badge in header (kept for footer reference) */
-  #omerCount { display:none; }
+  .tab:hover:not(.active) { color: var(--text); background: var(--surface2); }
 
-  /* Shabbat times strip — shown Fri/Sat in header area */
-  .shabbat-times-strip{display:none;background:linear-gradient(135deg,rgba(139,105,20,.45),rgba(200,164,74,.22),rgba(139,105,20,.35));border-top:1px solid rgba(200,164,74,.5);border-bottom:2px solid rgba(200,164,74,.3);padding:8px 30px;flex-shrink:0;justify-content:center;align-items:center;gap:clamp(20px,5vw,60px);flex-wrap:wrap;box-shadow:inset 0 1px 0 rgba(232,200,122,.2);}
-  .shabbat-times-strip.visible{display:flex;}
-  .sht-item{text-align:center;}
-  .sht-label{font-size:clamp(.65rem,1.2vw,.85rem);color:var(--gold-light);display:block;letter-spacing:1px;margin-bottom:2px;font-family:'Heebo',sans-serif;font-weight:500;}
-  .sht-time{font-size:clamp(1.15rem,2.6vw,1.8rem);font-weight:900;color:var(--text-bright);direction:ltr;text-shadow:0 0 12px rgba(232,200,122,.4);}
-  .sht-sep{width:1px;height:40px;background:linear-gradient(180deg,transparent,rgba(200,164,74,.4),transparent);flex-shrink:0;}
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
 
-  /* Main 3-col */
-  .main{flex:1;display:grid;grid-template-columns:1fr 2fr 1fr;overflow:hidden;min-height:0;}
-  .side-panel{display:flex;flex-direction:column;overflow:hidden;}
-  .panel-section{flex:1;border-bottom:1px solid rgba(200,164,74,.2);padding:10px 18px;display:flex;flex-direction:column;justify-content:center;}
-  .panel-section:last-child{border-bottom:none;}
-  .section-title{font-size:clamp(.82rem,1.52vw,1.05rem);color:var(--gold);font-weight:700;letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
-  .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(200,164,74,.5),transparent);}
-
-  /* Prayer items — +30% font sizes */
-  .prayer-item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(200,164,74,.08);}
-  .prayer-item:last-child{border-bottom:none;}
-  .prayer-name{font-size:clamp(1.23rem,2.46vw,1.52rem);color:var(--parchment);}
-  .prayer-time{font-size:clamp(1.47rem,2.93vw,1.94rem);font-weight:700;color:var(--text-bright);direction:ltr;}
-  .prayer-time.upcoming{color:var(--gold-light);text-shadow:0 0 10px rgba(232,200,122,.6);}
-
-  /* Clock */
-  .clock-panel{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;border-left:2px solid rgba(200,164,74,.3);border-right:2px solid rgba(200,164,74,.3);background:linear-gradient(180deg,rgba(45,26,10,.5),rgba(26,14,5,.8));}
-  .clock-box{position:relative;background:linear-gradient(145deg,#1a0e05,#2d1a0a);border:4px solid var(--gold);border-radius:20px;padding:20px 40px;box-shadow:0 0 0 2px var(--gold-dark),0 0 40px rgba(200,164,74,.4),inset 0 0 30px rgba(0,0,0,.5);text-align:center;margin-bottom:16px;}
-  .clock-box::before,.clock-box::after{content:'✦';position:absolute;top:50%;transform:translateY(-50%);color:var(--gold);font-size:1.5rem;opacity:.6;}
-  .clock-box::before{right:-30px;}.clock-box::after{left:-30px;}
-  #clock{font-size:clamp(4rem,10vw,8rem);font-weight:900;color:var(--text-bright);text-shadow:0 0 30px rgba(232,200,122,.5),0 2px 4px rgba(0,0,0,.8);letter-spacing:4px;line-height:1;direction:ltr;display:block;}
-  .colon{animation:blink 1s infinite;color:var(--gold-light);}
-  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.2}}
-  .day-name{font-size:clamp(1.17rem,2.93vw,1.76rem);color:var(--gold-light);font-weight:700;margin-top:8px;letter-spacing:2px;}
-  .quick-zmanim{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;padding:0 10px;}
-  .quick-item{background:rgba(200,164,74,.1);border:1px solid rgba(200,164,74,.3);border-radius:10px;padding:8px 12px;text-align:center;}
-  .q-label{font-size:clamp(.70rem,1.40vw,.94rem);color:var(--gold);display:block;margin-bottom:2px;}
-  .q-time{font-size:clamp(1.12rem,2.22vw,1.47rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
-
-  /* Footer */
-  .footer{background:linear-gradient(180deg,#1a0e05,#0d0703);border-top:3px solid var(--gold);flex-shrink:0;min-height:120px;position:relative;overflow:hidden;}
-  .footer::before{content:'';position:absolute;top:-5px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
-  .footer-slide{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;padding:12px 36px;opacity:0;transform:translateY(14px);transition:opacity .7s ease,transform .7s ease;pointer-events:none;}
-  .footer-slide.active{opacity:1;transform:translateY(0);pointer-events:auto;}
-  .slide-label{font-size:clamp(.65rem,1.2vw,.82rem);color:var(--gold);letter-spacing:3px;margin-bottom:8px;display:flex;align-items:center;gap:10px;}
-  .slide-label::before,.slide-label::after{content:'◆';font-size:.55rem;opacity:.7;}
-  .footer-prayers{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
-  .fp-card{background:rgba(200,164,74,.09);border:1px solid rgba(200,164,74,.35);border-radius:12px;padding:8px 22px;text-align:center;min-width:110px;}
-  .fp-name{font-size:clamp(.94rem,1.64vw,1.12rem);color:var(--gold-light);display:block;margin-bottom:3px;}
-  .fp-time{font-size:clamp(1.52rem,3.04vw,2.22rem);font-weight:900;color:var(--text-bright);direction:ltr;display:block;}
-  .footer-zmanim{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
-  .fz-card{background:rgba(200,164,74,.08);border:1px solid rgba(200,164,74,.28);border-radius:10px;padding:7px 14px;text-align:center;min-width:90px;}
-  .fz-name{font-size:clamp(.77rem,1.29vw,.94rem);color:var(--gold);display:block;margin-bottom:2px;}
-  .fz-time{font-size:clamp(1.05rem,2.11vw,1.47rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
-  .footer-announcements{display:flex;flex-direction:column;gap:5px;overflow:hidden;max-height:90px;}
-  .ann-line{font-size:clamp(1.05rem,1.99vw,1.29rem);color:var(--parchment);padding-right:18px;position:relative;line-height:1.3;}
-  .ann-line::before{content:'◈';position:absolute;right:0;color:var(--gold);font-size:.75rem;top:4px;}
-  .slide-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:7px;}
-  .dot{width:6px;height:6px;border-radius:50%;background:rgba(200,164,74,.25);transition:all .3s;}
-  .dot.active{background:var(--gold);transform:scale(1.5);}
-  .loading{color:rgba(200,164,74,.4);font-style:italic;font-size:.85rem;}
-
-  /* Footer custom slide */
-  .footer-custom-slide{display:flex;align-items:center;gap:16px;width:100%;height:100%;padding:0 8px;}
-  .footer-cs-img{flex-shrink:0;width:80px;height:80px;border:2px solid var(--gold);border-radius:10px;overflow:hidden;background:#1a0e05;display:flex;align-items:center;justify-content:center;}
-  .footer-cs-img img{width:100%;height:100%;object-fit:contain;}
-  .footer-cs-text{flex:1;overflow:hidden;}
-  .footer-cs-title{font-size:clamp(1rem,2vw,1.4rem);font-weight:900;color:var(--gold-light);line-height:1.2;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .footer-cs-body{font-size:clamp(.8rem,1.5vw,1rem);color:var(--parchment);font-family:'Heebo',sans-serif;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
-
-  /* ══ SCREEN B ══ */
-  #screenB{display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(160deg,#1a0e05 0%,#2d1a0a 40%,#1a0e05 100%);}
-  #screenB::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 50% 50%,rgba(200,164,74,.07) 0%,transparent 70%),repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(200,164,74,.015) 40px,rgba(200,164,74,.015) 41px);pointer-events:none;}
-  .screenB-header{text-align:center;margin-bottom:36px;position:relative;z-index:1;}
-  .screenB-title{font-size:clamp(1.4rem,3.5vw,2.5rem);font-weight:900;color:var(--gold-light);letter-spacing:4px;display:flex;align-items:center;gap:16px;justify-content:center;}
-  .screenB-title::before,.screenB-title::after{content:'';width:clamp(40px,8vw,100px);height:2px;background:linear-gradient(90deg,transparent,var(--gold));}
-  .screenB-title::after{background:linear-gradient(90deg,var(--gold),transparent);}
-  .screenB-subtitle{font-size:clamp(.9rem,1.8vw,1.2rem);color:var(--gold-dark);margin-top:6px;opacity:.8;}
-  .big-prayers-grid{display:flex;gap:clamp(14px,3vw,34px);flex-wrap:wrap;justify-content:center;padding:0 40px;position:relative;z-index:1;}
-  .big-prayer-card{background:linear-gradient(145deg,rgba(45,26,10,.9),rgba(26,14,5,.95));border:2px solid var(--gold);border-radius:20px;padding:clamp(18px,3vw,34px) clamp(22px,4vw,54px);text-align:center;box-shadow:0 0 0 1px var(--gold-dark),0 8px 40px rgba(0,0,0,.5),0 0 30px rgba(200,164,74,.15);min-width:clamp(120px,17vw,195px);position:relative;overflow:hidden;}
-  .big-prayer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--gold-light),transparent);}
-  .big-prayer-card.highlight{border-color:var(--gold-light);box-shadow:0 0 0 1px var(--gold),0 8px 40px rgba(0,0,0,.5),0 0 50px rgba(200,164,74,.3);}
-  .bpc-label{display:block;font-size:clamp(1rem,2vw,1.4rem);color:var(--gold-light);font-weight:700;margin-bottom:10px;letter-spacing:1px;}
-  .bpc-time{display:block;font-size:clamp(2.5rem,6vw,5rem);font-weight:900;color:var(--text-bright);text-shadow:0 0 30px rgba(232,200,122,.4),0 2px 6px rgba(0,0,0,.8);direction:ltr;letter-spacing:3px;line-height:1;}
-
-  /* Corner decorations */
-  .corner-deco{position:absolute;width:50px;height:50px;border-color:rgba(200,164,74,.35);border-style:solid;}
-  .corner-deco.tl{top:16px;right:16px;border-width:2px 0 0 2px;}
-  .corner-deco.tr{top:16px;left:16px;border-width:2px 2px 0 0;}
-  .corner-deco.bl{bottom:16px;right:16px;border-width:0 0 2px 2px;}
-  .corner-deco.br{bottom:16px;left:16px;border-width:0 2px 2px 0;}
-
-  /* ══ SCREEN D — ספירת העומר ══ */
-  #screenD {
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    background:linear-gradient(160deg,#05100a 0%,#0d2016 45%,#05100a 100%);
-    overflow:hidden;
+  /* Upload zone */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--card-radius);
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: var(--surface);
+    position: relative;
+    overflow: hidden;
   }
-  #screenD::before {
-    content:''; position:absolute; inset:0;
-    background:
-      radial-gradient(ellipse 55% 60% at 50% 50%,rgba(100,180,120,.09) 0%,transparent 65%),
-      repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(100,180,120,.018) 40px,rgba(100,180,120,.018) 41px);
-    pointer-events:none;
+  .upload-zone::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 100%, rgba(108,99,255,0.08), transparent 70%);
+    pointer-events: none;
   }
-  /* Green-gold palette for Omer */
-  .omer-screen-wrap {
-    position:relative; z-index:1;
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:clamp(12px,2.5vh,28px); text-align:center; padding:40px;
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(108,99,255,0.05);
   }
-  .omer-top-ornament {
-    font-size:clamp(2rem,5vw,4rem); opacity:.55; line-height:1;
-    color:#7dc98a;
+  .upload-icon { font-size: 40px; margin-bottom: 12px; }
+  .upload-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .upload-sub { font-size: 14px; color: var(--text2); margin-bottom: 20px; line-height: 1.6; }
+  .upload-formats {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
   }
-  .omer-label-small {
-    font-size:clamp(.9rem,1.8vw,1.3rem); font-family:'Heebo',sans-serif; font-weight:500;
-    color:#7dc98a; letter-spacing:4px; text-transform:uppercase;
+  .format-tag {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 4px 10px;
+    border-radius: 6px;
   }
-  .omer-count-text {
-    font-size:clamp(2rem,5.5vw,5rem); font-weight:900; color:#e8c87a;
-    line-height:1.1; letter-spacing:1px;
-    text-shadow:0 0 40px rgba(100,180,120,.4), 0 2px 8px rgba(0,0,0,.8);
-    max-width:min(900px,90vw);
-  }
-  .omer-weeks-text {
-    font-size:clamp(1rem,2.2vw,1.7rem); font-weight:700;
-    color:#a8e0b0; font-family:'Heebo',sans-serif;
-    opacity:.85;
-  }
-  .omer-mitzvah-line {
-    font-size:clamp(.85rem,1.6vw,1.15rem); font-family:'Heebo',sans-serif;
-    color:rgba(168,224,176,.6); font-style:italic;
-    margin-top:4px;
-  }
-  .omer-day-num {
-    font-size:clamp(5rem,14vw,12rem); font-weight:900;
-    color:#5cad6a; line-height:1;
-    text-shadow:0 0 60px rgba(92,173,106,.35), 0 4px 12px rgba(0,0,0,.7);
-    font-family:'Frank Ruhl Libre',serif;
-  }
-  .omer-box {
-    background:rgba(92,173,106,.08); border:2px solid rgba(92,173,106,.3);
-    border-radius:24px; padding:clamp(16px,3vw,36px) clamp(24px,5vw,64px);
-    position:relative; overflow:hidden;
-  }
-  .omer-box::before {
-    content:''; position:absolute; top:0; left:0; right:0; height:2px;
-    background:linear-gradient(90deg,transparent,rgba(92,173,106,.6),transparent);
-  }
-  .omer-corner { position:absolute; width:40px; height:40px; border-color:rgba(92,173,106,.3); border-style:solid; }
-  .omer-corner.tl { top:10px; right:10px; border-width:2px 0 0 2px; }
-  .omer-corner.tr { top:10px; left:10px;  border-width:2px 2px 0 0; }
-  .omer-corner.bl { bottom:10px; right:10px; border-width:0 0 2px 2px; }
-  .omer-corner.br { bottom:10px; left:10px;  border-width:0 2px 2px 0; }
+  #fileInput { display: none; }
 
-  /* Offline banner */
-  #offlineBanner {
-    display:none; position:fixed; top:0; left:0; right:0; z-index:999;
-    background:linear-gradient(135deg,#b71c1c,#d32f2f);
-    color:#fff; text-align:center; padding:8px 20px;
-    font-family:'Heebo',sans-serif; font-size:.95rem; font-weight:700;
-    letter-spacing:1px;
-    box-shadow:0 2px 12px rgba(0,0,0,.5);
+  /* Column mapper */
+  .mapper-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 24px;
+    margin-top: 16px;
   }
-  #offlineBanner.show { display:block; }
-  #screenC{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0d0703;overflow:hidden;}
+  .mapper-title { font-size: 16px; font-weight: 700; margin-bottom: 16px; color: var(--accent); }
+  .mapper-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .mapper-item label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .mapper-item select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Heebo', sans-serif;
+    outline: none;
+    cursor: pointer;
+  }
+  .mapper-item select:focus { border-color: var(--accent); }
 
-  /* Custom slide — background image support */
-  #screenC{background-size:cover;background-position:center;}
-  .cs-bg-image{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;z-index:0;}
-  .cs-bg-dimmer{position:absolute;inset:0;z-index:1;pointer-events:none;}
+  /* Buttons */
+  .btn {
+    padding: 10px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    font-family: 'Heebo', sans-serif;
+    transition: all 0.2s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(108,99,255,0.3);
+  }
+  .btn-primary:hover { background: #7c75ff; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-outline {
+    background: transparent;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+  }
+  .btn-outline:hover { background: rgba(108,99,255,0.1); }
+  .btn-danger {
+    background: rgba(255,101,132,0.15);
+    color: var(--accent2);
+    border: 1px solid rgba(255,101,132,0.3);
+  }
+  .btn-danger:hover { background: rgba(255,101,132,0.25); }
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
 
-  .cs-bg-overlay{position:absolute;inset:0;background:radial-gradient(ellipse 60% 70% at 50% 50%,rgba(200,164,74,.06) 0%,transparent 70%),repeating-linear-gradient(45deg,transparent,transparent 40px,rgba(200,164,74,.01) 40px,rgba(200,164,74,.01) 41px);pointer-events:none;z-index:2;}
+  /* Stats row */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 60px; height: 60px;
+    border-radius: 0 0 0 60px;
+    opacity: 0.15;
+  }
+  .stat-card.c1::before { background: var(--accent); }
+  .stat-card.c2::before { background: var(--accent2); }
+  .stat-card.c3::before { background: var(--accent3); }
+  .stat-card.c4::before { background: var(--accent4); }
+  .stat-label { font-size: 12px; color: var(--text2); margin-bottom: 8px; font-weight: 500; }
+  .stat-value { font-size: 26px; font-weight: 900; font-family: 'Space Mono', monospace; letter-spacing: -1px; }
+  .stat-value.c1 { color: var(--accent); }
+  .stat-value.c2 { color: var(--accent2); }
+  .stat-value.c3 { color: var(--accent3); }
+  .stat-value.c4 { color: var(--accent4); }
+  .stat-sub { font-size: 12px; color: var(--text3); margin-top: 4px; }
 
-  .cs-fullscreen{display:flex;width:100%;height:100%;align-items:center;justify-content:center;gap:clamp(24px,4vw,60px);padding:clamp(20px,4vw,60px);position:relative;z-index:3;}
-  .cs-image-wrap{flex-shrink:0;width:clamp(200px,38vw,580px);height:clamp(180px,55vh,500px);border:3px solid var(--gold);border-radius:18px;overflow:hidden;box-shadow:0 0 0 1px var(--gold-dark),0 0 50px rgba(200,164,74,.25);background:#1a0e05;display:flex;align-items:center;justify-content:center;}
-  .cs-fullscreen.layout-image-only .cs-image-wrap{width:clamp(300px,70vw,900px);height:clamp(250px,75vh,650px);}
-  .cs-image-wrap img{width:100%;height:100%;object-fit:contain;display:block;}
-  .cs-text-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;max-width:clamp(280px,45vw,640px);}
-  .cs-fullscreen.layout-text-only .cs-text-wrap{max-width:clamp(360px,70vw,900px);text-align:center;align-items:center;}
-  .cs-title{font-size:clamp(1.8rem,5vw,4.5rem);font-weight:900;line-height:1.15;letter-spacing:1px;}
-  .cs-body{font-size:clamp(1rem,2.5vw,2rem);font-weight:400;line-height:1.6;color:var(--parchment);font-family:'Heebo',sans-serif;}
-  .cs-badge{display:inline-block;background:rgba(200,164,74,.15);border:1px solid var(--gold);border-radius:50px;padding:4px 18px;font-size:clamp(.75rem,1.4vw,1rem);color:var(--gold-light);letter-spacing:2px;width:fit-content;}
+  /* Charts */
+  .charts-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px;
+  }
+  .chart-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; color: var(--text2); }
+  .chart-wrap { position: relative; height: 220px; }
 
-  /* Themes */
-  .theme-gold{--cs-accent:#c8a44a;--cs-title-color:#e8c87a;}
-  .theme-blue{--cs-accent:#5b9bd5;--cs-title-color:#a8d4f5;}
-  .theme-green{--cs-accent:#5cad6a;--cs-title-color:#a8dbb0;}
-  .theme-purple{--cs-accent:#9b72cf;--cs-title-color:#cdb0f5;}
-  .theme-red{--cs-accent:#d4625b;--cs-title-color:#f5a8a4;}
-  .cs-title{color:var(--cs-title-color,var(--gold-light));}
-  .cs-image-wrap{border-color:var(--cs-accent,var(--gold));}
-  .cs-badge{border-color:var(--cs-accent,var(--gold));color:var(--cs-title-color,var(--gold-light));}
+  /* Transactions table */
+  .table-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .table-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+  .table-title { font-size: 15px; font-weight: 700; }
+  .search-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Heebo', sans-serif;
+    outline: none;
+    width: 200px;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: right;
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 11px 16px;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(42,42,56,0.5);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(108,99,255,0.04); }
+  tfoot tr td {
+    border-top: 2px solid var(--border);
+    background: var(--surface2);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 13px 16px;
+    position: sticky;
+    bottom: 0;
+  }
+  tfoot .foot-label { color: var(--text2); }
+  tfoot .foot-total { font-family: 'Space Mono', monospace; color: var(--accent); font-size: 15px; }
+  .amount-col { font-family: 'Space Mono', monospace; font-size: 13px; }
+  .amount-neg { color: var(--accent2); }
+  .amount-pos { color: var(--accent3); }
+  .cat-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* AI Chat */
+  .ai-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    overflow: hidden;
+    margin-bottom: 24px;
+  }
+  .ai-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .ai-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent3);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+  .ai-title { font-size: 14px; font-weight: 700; }
+  .ai-model { font-size: 11px; color: var(--text3); margin-right: auto; font-family: 'Space Mono', monospace; }
+  .chat-messages {
+    padding: 16px 20px;
+    max-height: 420px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .msg {
+    max-width: 85%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .msg-ai {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px 12px 12px 12px;
+    align-self: flex-start;
+  }
+  .msg-user {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 12px 4px 12px 12px;
+    align-self: flex-end;
+    text-align: right;
+  }
+  .msg-thinking {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px 12px 12px 12px;
+    align-self: flex-start;
+    color: var(--text3);
+    font-style: italic;
+  }
+  .chat-input-row {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: 'Heebo', sans-serif;
+    outline: none;
+    resize: none;
+    min-height: 42px;
+    max-height: 120px;
+    line-height: 1.5;
+  }
+  .chat-input:focus { border-color: var(--accent); }
+  .chat-input::placeholder { color: var(--text3); }
+
+  /* Quick prompts */
+  .quick-prompts {
+    padding: 0 16px 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .qprompt {
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: 'Heebo', sans-serif;
+  }
+  .qprompt:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Manual entry */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+  .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+  .form-group input, .form-group select {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: 'Heebo', sans-serif;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(108,99,255,0.1); }
+  .form-group input::placeholder { color: var(--text3); }
+
+  /* History comparison */
+  .history-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .history-title { font-size: 15px; font-weight: 700; margin-bottom: 16px; }
+  .month-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .month-row:last-child { border-bottom: none; }
+  .month-name { width: 80px; font-size: 13px; font-weight: 700; color: var(--text2); }
+  .month-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 8px; overflow: hidden; }
+  .month-bar { height: 8px; border-radius: 4px; transition: width 0.5s ease; background: var(--accent); }
+  .month-amount { width: 100px; text-align: left; font-size: 13px; font-family: 'Space Mono', monospace; color: var(--text); }
+  .month-diff { font-size: 11px; width: 60px; text-align: center; }
+  .diff-up { color: var(--accent2); }
+  .diff-down { color: var(--accent3); }
+
+  /* Recommendations */
+  .reco-list { display: flex; flex-direction: column; gap: 12px; }
+  .reco-item {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    transition: border-color 0.2s;
+  }
+  .reco-item:hover { border-color: var(--accent); }
+  .reco-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .reco-body {}
+  .reco-title { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .reco-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .reco-save { font-size: 12px; color: var(--accent3); font-weight: 700; margin-top: 6px; font-family: 'Space Mono', monospace; }
+
+  /* Empty state */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+  .empty-state .big { font-size: 48px; margin-bottom: 16px; }
+  .empty-state p { font-size: 15px; line-height: 1.7; }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    padding: 12px 24px;
+    border-radius: 12px;
+    font-size: 14px;
+    z-index: 1000;
+    transition: transform 0.3s;
+    box-shadow: var(--glow);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Category edit popup */
+  .cat-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+  .cat-popup-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--card-radius);
+    padding: 24px;
+    width: 340px;
+    max-width: 95vw;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .cat-popup-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .cat-popup-sub { font-size: 12px; color: var(--text2); margin-bottom: 16px; }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .cat-chip {
+    padding: 5px 13px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .cat-chip:hover, .cat-chip.selected { border-color: #fff; transform: scale(1.06); }
+  .cat-custom-row { display: flex; gap: 8px; margin-top: 4px; }
+  .cat-custom-input {
+    flex: 1;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Heebo', sans-serif;
+    outline: none;
+  }
+  .cat-custom-input:focus { border-color: var(--accent); }
+  .popup-actions { display: flex; gap: 10px; margin-top: 18px; justify-content: flex-end; }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .mt16 { margin-top: 16px; }
+  .mt24 { margin-top: 24px; }
+  .flex-row { display: flex; align-items: center; gap: 12px; }
+  .text-muted { color: var(--text2); font-size: 13px; }
+  .divider { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
+
+  /* ── BUDGET & INCOME ──────────────────────────────────────────────────── */
+  .budget-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .budget-row:last-child { border-bottom: none; }
+  .budget-cat-name {
+    width: 100px;
+    font-size: 13px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .budget-bar-wrap {
+    flex: 1;
+    min-width: 120px;
+    background: var(--surface2);
+    border-radius: 6px;
+    height: 10px;
+    overflow: hidden;
+    position: relative;
+  }
+  .budget-bar-spent {
+    height: 10px;
+    border-radius: 6px;
+    transition: width 0.4s ease;
+    position: absolute;
+    right: 0;
+  }
+  .budget-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+  .budget-input {
+    width: 90px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-family: 'Space Mono', monospace;
+    outline: none;
+    text-align: left;
+  }
+  .budget-input:focus { border-color: var(--accent); }
+  .budget-pct {
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    min-width: 40px;
+    text-align: left;
+  }
+  .budget-pct.over { color: var(--accent2); font-weight: 700; }
+  .budget-pct.ok   { color: var(--accent3); }
+  .budget-pct.warn { color: var(--accent4); }
+  .suggest-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .suggest-row:last-child { border-bottom: none; }
+  .suggest-cat { font-size: 13px; font-weight: 700; min-width: 90px; }
+  .suggest-reason { font-size: 12px; color: var(--text2); flex: 1; }
+  .suggest-amount { font-size: 13px; font-family: 'Space Mono', monospace; color: var(--accent); font-weight: 700; white-space: nowrap; }
+  .inc-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* ── MOBILE RESPONSIVE ────────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+
+    /* App padding */
+    .app { padding: 12px 10px 80px; }
+
+    /* Header — stack vertically */
+    .header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+    }
+    .header > div:last-child { width: 100%; flex-direction: column; gap: 8px; }
+    .logo { font-size: 22px; }
+
+    /* Date range picker — full width */
+    .date-range-picker { width: 100%; justify-content: space-between; padding: 8px 12px; }
+    .date-range-picker input[type="date"] { width: auto; flex: 1; font-size: 12px; }
+
+    /* Auth button — full width */
+    #authBtn { width: 100%; text-align: center; padding: 10px; }
+
+    /* Tabs — horizontal scroll */
+    .tabs {
+      width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      gap: 2px;
+      padding: 3px;
+      margin-bottom: 16px;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab { padding: 8px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+
+    /* Stats — 2 columns */
+    .stats-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .stat-card { padding: 14px 12px; }
+    .stat-value { font-size: 20px; }
+    .stat-label { font-size: 11px; }
+
+    /* Charts — single column */
+    .charts-grid { grid-template-columns: 1fr; gap: 12px; }
+    .chart-wrap { height: 180px; }
+
+    /* Table header — stack */
+    .table-header { flex-direction: column; align-items: flex-start; padding: 12px; gap: 8px; }
+    .search-input { width: 100%; }
+    #catFilter { width: 100% !important; }
+
+    /* Table — compact */
+    th { padding: 8px 10px; font-size: 10px; }
+    td { padding: 9px 10px; font-size: 12px; }
+    tfoot tr td { padding: 10px; font-size: 12px; }
+    .foot-total { font-size: 14px !important; }
+
+    /* Category badge — smaller */
+    .cat-badge { font-size: 10px; padding: 2px 7px; }
+
+    /* Form grid — single column */
+    .form-grid { grid-template-columns: 1fr; }
+    .mapper-grid { grid-template-columns: 1fr; }
+
+    /* History bars — shrink month name */
+    .month-name { width: 60px; font-size: 12px; }
+    .month-amount { width: 80px; font-size: 12px; }
+
+    /* Cards padding */
+    .history-card { padding: 14px 12px; }
+    .chart-card { padding: 14px 12px; }
+
+    /* Reco items */
+    .reco-icon { font-size: 20px; }
+    .reco-title { font-size: 13px; }
+    .reco-desc { font-size: 12px; }
+
+    /* AI panel */
+    .chat-messages { max-height: 320px; padding: 12px; }
+    .msg { font-size: 13px; max-width: 92%; }
+    .chat-input-row { padding: 8px 10px; gap: 8px; }
+    .quick-prompts { padding: 8px 10px; gap: 6px; }
+    .qprompt { font-size: 11px; padding: 4px 10px; }
+
+    /* AI model selector row */
+    #panel-ai .ai-section > div:nth-child(2) { flex-direction: column; align-items: flex-start; }
+    #aiProviderSelect { width: 100%; }
+    #apiKeyBadge { width: 100%; text-align: center; }
+
+    /* Cat popup */
+    .cat-popup-box { padding: 16px; }
+    .cat-chips { gap: 6px; }
+    .cat-chip { font-size: 11px; padding: 4px 10px; }
+
+    /* Upload zone */
+    .upload-zone { padding: 28px 16px; }
+    .upload-icon { font-size: 30px; }
+    .upload-title { font-size: 15px; }
+    .upload-sub { font-size: 12px; }
+
+    /* Toast */
+    .toast { width: 90%; text-align: center; font-size: 13px; }
+
+    /* Mapper card */
+    .mapper-card { padding: 14px; }
+
+    /* Button sizes */
+    .btn { padding: 9px 16px; font-size: 13px; }
+    .btn-sm { padding: 5px 10px; font-size: 11px; }
+
+    /* Month manage rows */
+    .month-row { gap: 8px; flex-wrap: wrap; }
+  }
+
+  /* Bottom nav feel — extra bottom padding for thumb reach on mobile */
+  @media (max-width: 600px) {
+    .tabs { position: sticky; top: 0; z-index: 100; background: var(--bg); border-radius: 0; border: none; border-bottom: 1px solid var(--border); padding: 8px 10px; margin-bottom: 16px; }
+    .tab.active { box-shadow: none; }
+  }
 </style>
 </head>
 <body>
+<div class="app">
 
-<!-- SCREEN A -->
-<div id="screenA" class="screen active">
-  <div class="shabbat-banner" id="shabbatBanner">✡ שבת שלום ✡</div>
+  <!-- Header -->
   <div class="header">
-    <div class="date-block">
-      <div class="hebrew-date-big" id="hebrewDate">טוען...</div>
-      <div class="greg-date-small" id="gregDate"></div>
+    <div style="display:flex;flex-direction:column;gap:2px">
+      <div class="logo">Finish<span style="font-size:13px;opacity:0.5;margin-right:6px;font-weight:400">by פיניש</span></div>
+      <div style="font-size:11px;color:var(--text3);font-family:'Space Mono',monospace" id="authStatus">מתחבר...</div>
     </div>
-    <div class="parasha-badge">פרשת השבוע<strong id="parasha">טוען...</strong></div>
-    <div class="today-info" id="todayInfo">
-      <div class="today-next-holiday" style="opacity:.5;">טוען...</div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <div class="date-range-picker">
+        <label>מ׳</label>
+        <input type="date" id="rangeFrom" onchange="applyDateRange()">
+        <span class="date-range-sep">—</span>
+        <label>עד</label>
+        <input type="date" id="rangeTo" onchange="applyDateRange()">
+        <span id="rangeBadge" class="range-badge" style="display:none"></span>
+      </div>
+      <button id="authBtn" onclick="handleAuth()"
+        style="background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:6px 14px;border-radius:10px;font-size:12px;font-family:'Heebo',sans-serif;cursor:pointer;transition:all 0.2s;white-space:nowrap"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        🔐 כניסה עם Google
+      </button>
     </div>
   </div>
 
-  <!-- Shabbat times strip — visible Fri/Sat -->
-  <div class="shabbat-times-strip" id="shabbatStrip">
-    <div class="sht-item"><span class="sht-label">🕯 כניסת שבת</span><span class="sht-time" id="sht-candles">--:--</span></div>
-    <div class="sht-sep"></div>
-    <div class="sht-item"><span class="sht-label">🌅 שקיעת החמה</span><span class="sht-time" id="sht-sunset">--:--</span></div>
-    <div class="sht-sep"></div>
-    <div class="sht-item"><span class="sht-label">✨ צאת שבת / הבדלה</span><span class="sht-time" id="sht-havdalah">--:--</span></div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('dashboard')">📊 דשבורד</button>
+    <button class="tab" onclick="showTab('transactions')">📋 עסקאות</button>
+    <button class="tab" onclick="showTab('income')">💚 הכנסות</button>
+    <button class="tab" onclick="showTab('budget')">🎯 תקציב</button>
+    <button class="tab" onclick="showTab('ai')">🤖 ניתוח AI</button>
+    <button class="tab" onclick="showTab('history')">📈 היסטוריה</button>
+    <button class="tab" onclick="showTab('import')">📥 ייבוא</button>
+    <button class="tab" onclick="showTab('manual')">✏️ הזנה ידנית</button>
   </div>
 
-  <div class="main">
-    <div class="side-panel">
-      <div class="panel-section">
-        <div class="section-title">תפילות</div>
-        <div class="prayer-item"><span class="prayer-name">שחרית</span><span class="prayer-time" id="sp-shacharit">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">מנחה</span><span class="prayer-time" id="sp-mincha">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">ערבית</span><span class="prayer-time" id="sp-arvit">--:--</span></div>
-        <div class="prayer-item shabbat-only" style="display:none;"><span class="prayer-name">קבלת שבת</span><span class="prayer-time" id="sp-kabbalat">--:--</span></div>
-        <div class="prayer-item shabbat-only" style="display:none;"><span class="prayer-name">שחרית שבת</span><span class="prayer-time" id="sp-shacharit_shabbat">--:--</span></div>
-        <div class="prayer-item shabbat-only" style="display:none;"><span class="prayer-name">מנחה שבת</span><span class="prayer-time" id="sp-mincha_shabbat">--:--</span></div>
-        <div class="prayer-item shabbat-only" style="display:none;"><span class="prayer-name">ערבית מוצ"ש</span><span class="prayer-time" id="sp-arvit_motzash">--:--</span></div>
+  <!-- IMPORT PANEL -->
+  <div id="panel-import" class="panel">
+    <div class="upload-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title">גרור קובץ או לחץ לבחירה</div>
+      <div class="upload-sub">
+        תומך בקבצי Excel מהבנק, אשראי (ישראכרט, ויזה, מקס), ולאומי, הפועלים ועוד.<br>
+        המערכת תזהה אוטומטית את העמודות.
       </div>
-      <!-- Holiday prayers panel — shown only when enabled in admin -->
-      <div class="panel-section" id="holiday-panel" style="display:none;">
-        <div class="section-title" id="holiday-panel-title">תפילות חגים</div>
-        <div id="holiday-prayer-list"></div>
-      </div>
-    </div>
-
-    <div class="clock-panel">
-      <div class="clock-box">
-        <span id="clock"><span id="ch">12</span><span class="colon">:</span><span id="cm">00</span></span>
-        <div class="day-name" id="dayName">יום ראשון</div>
-      </div>
-      <div class="quick-zmanim">
-        <div class="quick-item"><span class="q-label">עלות השחר</span><span class="q-time" id="qz-alot">--:--</span></div>
-        <div class="quick-item"><span class="q-label">הנץ החמה</span><span class="q-time" id="qz-sunrise">--:--</span></div>
-        <div class="quick-item"><span class="q-label">שקיעה</span><span class="q-time" id="qz-sunset">--:--</span></div>
-        <div class="quick-item"><span class="q-label">צאת הכוכבים</span><span class="q-time" id="qz-tzeit">--:--</span></div>
+      <div class="upload-formats">
+        <span class="format-tag">.xlsx</span>
+        <span class="format-tag">.xls</span>
+        <span class="format-tag">.csv</span>
       </div>
     </div>
+    <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(this.files[0])">
 
-    <div class="side-panel">
-      <div class="panel-section">
-        <div class="section-title">זמני היום</div>
-        <div class="prayer-item"><span class="prayer-name">סוף ק"ש (גר"א)</span><span class="prayer-time" id="sz-shma">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">סוף תפילה</span><span class="prayer-time" id="sz-tfilla">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">חצות היום</span><span class="prayer-time" id="sz-chatzot">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">מנחה גדולה</span><span class="prayer-time" id="sz-minchag">--:--</span></div>
-        <div class="prayer-item"><span class="prayer-name">פלג המנחה</span><span class="prayer-time" id="sz-plag">--:--</span></div>
+    <div id="mapperSection" class="mapper-card" style="display:none">
+      <div class="mapper-title">🔧 מיפוי עמודות</div>
+      <div class="mapper-grid">
+        <div class="mapper-item">
+          <label>📅 תאריך</label>
+          <select id="mapDate"></select>
+        </div>
+        <div class="mapper-item">
+          <label>📝 תיאור / שם עסק</label>
+          <select id="mapDesc"></select>
+        </div>
+        <div class="mapper-item">
+          <label>💰 סכום</label>
+          <select id="mapAmount"></select>
+        </div>
+        <div class="mapper-item">
+          <label>🏷️ קטגוריה (אופציונלי)</label>
+          <select id="mapCat"><option value="">— ללא —</option></select>
+        </div>
+      </div>
+      <div class="flex-row mt16">
+        <button class="btn btn-primary" onclick="importData()">✅ ייבא נתונים</button>
+        <span id="importCount" class="text-muted"></span>
+      </div>
+    </div>
+
+    <div class="mt24">
+      <div class="history-card">
+        <div class="history-title">📅 נתונים קיימים לפי חודש</div>
+        <div id="monthSummary">
+          <div class="empty-state" style="padding:20px">
+            <p>עדיין לא יובאו נתונים. העלה קובץ כדי להתחיל.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="mt16">
+      <div class="history-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="history-title" style="margin:0">🗂️ ניהול קבצים מיובאים</div>
+          <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑️ מחק הכל</button>
+        </div>
+        <div id="fileRegistry">
+          <p class="text-muted">אין קבצים מיובאים.</p>
+        </div>
+        <div class="mt16">
+          <button class="btn btn-outline" onclick="exportAllData()" style="font-size:13px">📤 ייצוא כל הנתונים (JSON)</button>
+        </div>
       </div>
     </div>
   </div>
 
-  <div class="footer">
-    <div class="footer-slide active" id="fs-0"><div class="slide-label">זמני תפילות</div><div class="footer-prayers" id="fp-container"></div></div>
-    <div class="footer-slide" id="fs-1"><div class="slide-label">זמני היום</div><div class="footer-zmanim" id="fz-container"></div></div>
-    <div class="footer-slide" id="fs-2"><div class="slide-label">הודעות</div><div class="footer-announcements" id="fa-container"><span class="loading">טוען...</span></div></div>
-    <div class="slide-dots" id="footerDots">
-      <div class="dot active"></div><div class="dot"></div><div class="dot"></div>
+  <!-- DASHBOARD PANEL -->
+  <div id="panel-dashboard" class="panel active">
+    <div id="dashEmpty" class="empty-state">
+      <div class="big">📊</div>
+      <p>ייבא קובץ הוצאות כדי לראות את הדשבורד.</p>
+    </div>
+    <div id="dashContent" style="display:none">
+      <div class="stats-grid" id="statsGrid"></div>
+      <div class="charts-grid">
+        <div class="chart-card">
+          <div class="chart-title">הוצאות לפי קטגוריה</div>
+          <div class="chart-wrap"><canvas id="catChart"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">הוצאות לאורך זמן</div>
+          <div class="chart-wrap"><canvas id="timeChart"></canvas></div>
+        </div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card" style="grid-column:1/-1">
+          <div class="chart-title">TOP 10 הוצאות גדולות בחודש</div>
+          <div class="chart-wrap" style="height:260px"><canvas id="topChart"></canvas></div>
+        </div>
+      </div>
+      <div id="recoSection" class="history-card">
+        <div class="history-title">💡 המלצות לחיסכון</div>
+        <div class="reco-list" id="recoList"></div>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- SCREEN B -->
-<div id="screenB" class="screen">
-  <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
-  <div class="corner-deco bl"></div><div class="corner-deco br"></div>
-  <div class="screenB-header">
-    <div class="screenB-title">זמני תפילות</div>
-    <div class="screenB-subtitle" id="sb-subtitle"></div>
-  </div>
-  <div class="big-prayers-grid" id="big-prayers-grid"></div>
-</div>
-
-<!-- SCREEN C -->
-<div id="screenC" class="screen theme-gold">
-  <div class="cs-bg-image" id="csBgImage"></div>
-  <div class="cs-bg-dimmer" id="csBgDimmer"></div>
-  <div class="cs-bg-overlay"></div>
-  <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
-  <div class="corner-deco bl"></div><div class="corner-deco br"></div>
-  <div id="screenCInner" class="cs-fullscreen layout-text-image"></div>
-</div>
-
-<!-- SCREEN D — ספירת העומר -->
-<div id="screenD" class="screen" data-omer-active="false">
-  <div class="corner-deco tl"></div><div class="corner-deco tr"></div>
-  <div class="corner-deco bl"></div><div class="corner-deco br"></div>
-  <div class="omer-screen-wrap">
-    <div class="omer-top-ornament">✡</div>
-    <div class="omer-label-small">ספירת העומר</div>
-    <div class="omer-box">
-      <div class="omer-corner tl"></div><div class="omer-corner tr"></div>
-      <div class="omer-corner bl"></div><div class="omer-corner br"></div>
-      <div class="omer-day-num" id="omerDayNum">—</div>
+  <!-- TRANSACTIONS PANEL -->
+  <div id="panel-transactions" class="panel">
+    <div id="txEmpty" class="empty-state">
+      <div class="big">📋</div>
+      <p>ייבא קובץ הוצאות כדי לראות את העסקאות.</p>
     </div>
-    <div class="omer-count-text" id="omerCountText">טוען...</div>
-    <div class="omer-weeks-text" id="omerWeeksText"></div>
-    <div class="omer-mitzvah-line">מצות עשה מן התורה לספור את ימי העומר</div>
+    <div id="txContent" style="display:none">
+
+      <!-- Quick-add expense form -->
+      <div class="history-card" style="margin-bottom:16px">
+        <div class="history-title" style="margin-bottom:12px">➕ הוסף הוצאה מהירה</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>תאריך</label>
+            <input type="date" id="txQuickDate">
+          </div>
+          <div class="form-group">
+            <label>תיאור</label>
+            <input type="text" id="txQuickDesc" placeholder="שם עסק / תיאור">
+          </div>
+          <div class="form-group">
+            <label>סכום (₪)</label>
+            <input type="number" id="txQuickAmount" placeholder="0" step="0.01" min="0">
+          </div>
+          <div class="form-group">
+            <label>קטגוריה</label>
+            <select id="txQuickCat">
+              <option value="מזון">🛒 מזון</option>
+              <option value="מסעדות">🍽️ מסעדות</option>
+              <option value="תחבורה">🚗 תחבורה</option>
+              <option value="בריאות">💊 בריאות</option>
+              <option value="בידור">🎬 בידור</option>
+              <option value="חשבונות">🏠 חשבונות</option>
+              <option value="ביגוד">👔 ביגוד</option>
+              <option value="חינוך">📚 חינוך</option>
+              <option value="אחר">📦 אחר</option>
+            </select>
+          </div>
+        </div>
+        <div class="flex-row mt16">
+          <button class="btn btn-primary" onclick="addQuickTx()">➕ הוסף הוצאה</button>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <div class="table-title">כל העסקאות <span id="txCountBadge" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
+          <input class="search-input" type="text" placeholder="חיפוש..." id="txSearch" oninput="filterTx()">
+          <select id="catFilter" class="search-input" style="width:150px" onchange="filterTx()">
+            <option value="">כל הקטגוריות</option>
+          </select>
+        </div>
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>תאריך</th>
+                <th>תיאור</th>
+                <th>קטגוריה</th>
+                <th>סכום</th>
+                <th style="width:60px"></th>
+              </tr>
+            </thead>
+            <tbody id="txTable"></tbody>
+            <tfoot id="txFoot"></tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
+
+  <!-- AI PANEL -->
+  <div id="panel-ai" class="panel">
+    <div class="ai-section">
+      <div class="ai-header">
+        <div class="ai-dot"></div>
+        <div class="ai-title">ניתוח חכם</div>
+        <div class="ai-model" id="aiModelBadge">—</div>
+      </div>
+      <!-- Model selector + key row -->
+      <div style="padding:12px 16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--border)">
+        <span style="font-size:12px;color:var(--text2);white-space:nowrap">מודל:</span>
+        <select id="aiProviderSelect" onchange="onProviderChange()" style="background:var(--surface2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:8px;font-size:12px;font-family:'Heebo',sans-serif;outline:none;cursor:pointer">
+          <optgroup label="🆓 חינמי">
+            <option value="gemini|gemini-2.5-flash">Google Gemini 2.5 Flash (חינמי)</option>
+            <option value="gemini|gemini-2.0-flash">Google Gemini 2.0 Flash (חינמי)</option>
+            <option value="openrouter|meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B via OpenRouter (חינמי)</option>
+            <option value="openrouter|mistralai/mistral-7b-instruct:free">Mistral 7B via OpenRouter (חינמי)</option>
+          </optgroup>
+          <optgroup label="💳 בתשלום">
+            <option value="anthropic|claude-sonnet-4-20250514" selected>Claude Sonnet 4 (Anthropic)</option>
+            <option value="anthropic|claude-haiku-4-5-20251001">Claude Haiku 4.5 (Anthropic — זול יותר)</option>
+            <option value="openai|gpt-4o-mini">GPT-4o Mini (OpenAI)</option>
+            <option value="openai|gpt-4o">GPT-4o (OpenAI)</option>
+          </optgroup>
+        </select>
+        <button id="apiKeyBadge" onclick="setApiKey()"
+          style="background:rgba(255,101,132,0.12);border:1px solid rgba(255,101,132,0.4);color:var(--accent2);padding:5px 14px;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:'Heebo',sans-serif;transition:all 0.2s;white-space:nowrap"
+          onmouseover="this.style.background='rgba(255,101,132,0.22)'" onmouseout="this.style.background='rgba(255,101,132,0.12)'">
+          🔑 הגדר API Key
+        </button>
+        <span id="freeNote" style="font-size:11px;color:var(--accent3);display:none">✓ חינמי — key מ-Google AI Studio</span>
+      </div>
+      <div class="quick-prompts" id="quickPrompts">
+        <span class="qprompt" onclick="sendQuick(this)">📊 נתח את ההוצאות שלי</span>
+        <span class="qprompt" onclick="sendQuick(this)">❓ שאל אותי על הוצאות לא ברורות</span>
+        <span class="qprompt" onclick="sendQuick(this)">💡 מה אני יכול לחסוך?</span>
+        <span class="qprompt" onclick="sendQuick(this)">📈 מה גדל מהתקופה הקודמת?</span>
+        <span class="qprompt" onclick="sendQuick(this)">🏆 ההוצאה הגדולה ביותר</span>
+      </div>
+      <div class="chat-messages" id="chatMessages">
+        <div class="msg msg-ai">שלום! בחר מודל AI מהרשימה למעלה והגדר API Key. מודלי Google Gemini ו-OpenRouter מציעים שכבה חינמית נדיבה — מצוינים לשימוש יומיומי. 💰</div>
+      </div>
+      <div class="chat-input-row">
+        <textarea class="chat-input" id="chatInput" placeholder="שאל שאלה על ההוצאות שלך..." rows="1" onkeydown="handleChatKey(event)"></textarea>
+        <button class="btn btn-primary" id="sendBtn" onclick="sendChat()">שלח</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- HISTORY PANEL -->
+  <div id="panel-history" class="panel">
+    <div class="history-card">
+      <div class="history-title">📈 השוואה חודשית</div>
+      <div id="historyBars">
+        <div class="empty-state" style="padding:20px">
+          <p>ייבא נתונים ממספר חודשים כדי לראות השוואה.</p>
+        </div>
+      </div>
+    </div>
+    <div class="history-card mt16">
+      <div class="history-title">📋 ניהול חודשים</div>
+      <div id="monthManage"></div>
+    </div>
+    <div class="mt16">
+      <button class="btn btn-outline" onclick="exportAllData()">📤 ייצוא כל הנתונים (JSON)</button>
+      <button class="btn btn-danger btn-sm" style="margin-right:10px" onclick="clearAll()">🗑️ מחק הכל</button>
+    </div>
+  </div>
+
+  <!-- MANUAL PANEL -->
+  <div id="panel-manual" class="panel">
+    <div class="history-card">
+      <div class="history-title">✏️ הוסף הוצאה ידנית</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>תאריך</label>
+          <input type="date" id="mDate">
+        </div>
+        <div class="form-group">
+          <label>תיאור</label>
+          <input type="text" id="mDesc" placeholder="שם עסק / תיאור">
+        </div>
+        <div class="form-group">
+          <label>סכום (₪)</label>
+          <input type="number" id="mAmount" placeholder="0.00" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>קטגוריה</label>
+          <select id="mCat">
+            <option value="מזון">🛒 מזון וקניות</option>
+            <option value="מסעדות">🍽️ מסעדות וקפה</option>
+            <option value="תחבורה">🚗 תחבורה</option>
+            <option value="בריאות">💊 בריאות</option>
+            <option value="בידור">🎬 בידור</option>
+            <option value="חשבונות">🏠 חשבונות ודיור</option>
+            <option value="ביגוד">👔 ביגוד</option>
+            <option value="חינוך">📚 חינוך</option>
+            <option value="אחר">📦 אחר</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex-row mt16">
+        <button class="btn btn-primary" onclick="addManual()">➕ הוסף הוצאה</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- INCOME PANEL -->
+  <div id="panel-income" class="panel">
+
+    <!-- Add income form -->
+    <div class="history-card">
+      <div class="history-title">➕ הוסף הכנסה</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>תאריך</label>
+          <input type="date" id="incDate">
+        </div>
+        <div class="form-group">
+          <label>תיאור</label>
+          <input type="text" id="incDesc" placeholder="משכורת, פרילנס, שכ״ד...">
+        </div>
+        <div class="form-group">
+          <label>סכום (₪)</label>
+          <input type="number" id="incAmount" placeholder="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label>מקור הכנסה</label>
+          <select id="incCat">
+            <option value="משכורת">💼 משכורת</option>
+            <option value="פרילנס">💻 פרילנס / עצמאי</option>
+            <option value="שכר דירה">🏠 שכר דירה</option>
+            <option value="השקעות">📈 השקעות / דיבידנד</option>
+            <option value="בונוס">🎁 בונוס</option>
+            <option value="מתנה">🎀 מתנה</option>
+            <option value="החזר">↩️ החזר כספי</option>
+            <option value="אחר">📦 אחר</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex-row mt16">
+        <button class="btn btn-primary" style="background:var(--inc-accent);box-shadow:0 4px 16px rgba(67,233,123,0.25)" onclick="addIncome()">➕ הוסף הכנסה</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid mt16" id="incStatsGrid">
+      <div class="empty-state" style="padding:20px;grid-column:1/-1"><p>הוסף הכנסות כדי לראות סיכום.</p></div>
+    </div>
+
+    <!-- Charts -->
+    <div class="charts-grid" id="incChartsGrid" style="display:none">
+      <div class="chart-card">
+        <div class="chart-title">הכנסות לפי מקור</div>
+        <div class="chart-wrap"><canvas id="incSourceChart"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">הכנסות vs הוצאות</div>
+        <div class="chart-wrap"><canvas id="incVsExpChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Income list -->
+    <div class="table-card" id="incTableWrap" style="display:none">
+      <div class="table-header">
+        <div class="table-title">כל ההכנסות <span id="incCountBadge" style="font-size:12px;color:var(--text3);font-weight:400"></span></div>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr><th>תאריך</th><th>תיאור</th><th>מקור</th><th>סכום</th><th style="width:50px"></th></tr></thead>
+          <tbody id="incTable"></tbody>
+          <tfoot id="incFoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- BUDGET PANEL -->
+  <div id="panel-budget" class="panel">
+
+    <!-- Budget overview -->
+    <div id="budgetEmpty" class="empty-state">
+      <div class="big">🎯</div>
+      <p>ייבא הוצאות תחילה, ואז הגדר תקציב לכל קטגוריה.</p>
+    </div>
+
+    <div id="budgetContent" style="display:none">
+      <!-- Summary cards -->
+      <div class="stats-grid" id="budgetStatsGrid"></div>
+
+      <!-- Smart suggestions banner -->
+      <div id="budgetSuggestBanner" class="history-card mt16" style="border-color:rgba(108,99,255,0.4);background:rgba(108,99,255,0.06)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="history-title" style="margin:0">✨ הצעות חכמות</div>
+          <button class="btn btn-outline btn-sm" onclick="applySuggestions()">החל הכל</button>
+        </div>
+        <div id="budgetSuggestList"></div>
+      </div>
+
+      <!-- Per-category budget sliders -->
+      <div class="history-card mt16">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div class="history-title" style="margin:0">📋 תקציב לפי קטגוריה</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-outline btn-sm" onclick="resetBudgets()">איפוס</button>
+            <button class="btn btn-primary btn-sm" onclick="saveBudgets()">💾 שמור</button>
+          </div>
+        </div>
+        <div id="budgetCatList"></div>
+      </div>
+    </div>
+  </div>
+
 </div>
 
-<!-- Offline banner -->
-<div id="offlineBanner">
-  ⚠️ אין חיבור לאינטרנט — מנסה להתחבר מחדש...
-  <span id="offlineCountdown"></span>
-</div>
+<div class="toast" id="toast"></div>
 
-<script type="module">
-import { initializeApp }   from "https://www.gstatic.com/firebasejs/12.12.1/firebase-app.js";
-import { getFirestore, doc, collection, onSnapshot, orderBy, query }
-  from "https://www.gstatic.com/firebasejs/12.12.1/firebase-firestore.js";
-
-const app = initializeApp({
-  apiKey:"AIzaSyBl99zWeW0SpVWs18P5GlJ-mDPTsiaSgEM",
-  authDomain:"gavlli-board.firebaseapp.com",
-  projectId:"gavlli-board",
-  storageBucket:"gavlli-board.firebasestorage.app",
-  messagingSenderId:"202183123739",
-  appId:"1:202183123739:web:5e2375d9eae0c0202e29be",
-  measurementId:"G-BZMPZXH2PF"
-});
-const db = getFirestore(app);
-
-// ── Config ──
-// באר שבע
-const LOCATION   = { lat:31.2516, lng:34.7915, tzid:'Asia/Jerusalem', city:'Be\'er Sheva' };
-const HEBCAL     = 'https://www.hebcal.com';
-const CANDLE_MIN = 30; // דקות לפני שקיעה להדלקת נרות — באר שבע
-const FOOTER_INT = 10000;  // 10 שניות בין שקופיות footer
-const CYCLE_A_MS = 20000;  // 20 שניות — מסך A
-const CYCLE_B_MS = 20000;  // 20 שניות — מסך B
-const CYCLE_C_MS = 20000;  // 20 שניות — מסך C
-const CYCLE_D_MS = 20000;  // 20 שניות — מסך D (ספירת העומר)
-
-const DAYS_HE = ['יום ראשון','יום שני','יום שלישי','יום רביעי','יום חמישי','יום שישי','שבת קודש'];
-const WEEKDAY_PRAYERS = [{key:'shacharit',label:'שחרית'},{key:'mincha',label:'מנחה'},{key:'arvit',label:'ערבית'}];
-const SHABBAT_PRAYERS = [
-  {key:'kabbalat',label:'קבלת שבת'},
-  {key:'shacharit_shabbat',label:'שחרית שבת'},
-  {key:'mincha_shabbat',label:'מנחה שבת'},
-  {key:'arvit_motzash',label:'ערבית מוצ"ש'},
-];
-
-let prayerData   = {};
-let customSlides = [];
-let footerCustom = [];
-let footerCount  = 3;
-
-const isShabbat = () => { const d=new Date().getDay(); return d===5||d===6; };
-const fmt = iso => iso ? new Date(iso).toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jerusalem'}) : '--:--';
-
-// ── isSlideActive: check schedule rules ──
-function isSlideActive(slide) {
-  if (!slide.active) return false;
-  const now = new Date();
-  const todayStr = now.toISOString().slice(0,10); // YYYY-MM-DD
-  const dayIdx   = now.getDay(); // 0=Sun … 6=Sat
-
-  // Date range filter
-  if (slide.scheduleType === 'dateRange') {
-    const from = slide.dateFrom || '';
-    const to   = slide.dateTo   || '';
-    if (from && todayStr < from) return false;
-    if (to   && todayStr > to  ) return false;
-  }
-
-  // Days-of-week filter
-  if (slide.scheduleType === 'days' && slide.activeDays?.length) {
-    if (!slide.activeDays.includes(dayIdx)) return false;
-  }
-
-  return true;
-}
-
-// ── Clock ──
-function updateClock() {
-  const now=new Date();
-  document.getElementById('ch').textContent=String(now.getHours()).padStart(2,'0');
-  document.getElementById('cm').textContent=String(now.getMinutes()).padStart(2,'0');
-  document.getElementById('dayName').textContent=DAYS_HE[now.getDay()];
-  document.getElementById('shabbatBanner').style.display=now.getDay()===6?'block':'none';
-  document.querySelectorAll('.shabbat-only').forEach(el=>el.style.display=isShabbat()?'flex':'none');
-  document.getElementById('shabbatStrip').classList.toggle('visible', isShabbat());
-  const nowMins=now.getHours()*60+now.getMinutes();
-  document.querySelectorAll('.prayer-time').forEach(el=>{
-    el.classList.remove('upcoming');
-    const t=el.textContent.trim();
-    if(t&&t!=='--:--'){const[h,m]=t.split(':').map(Number),diff=h*60+m-nowMins;if(diff>0&&diff<30)el.classList.add('upcoming');}
-  });
-}
-setInterval(updateClock,1000); updateClock();
-
-// ── Hebcal ──
-async function fetchHebcal() {
-  const d=new Date(), yyyy=d.getFullYear(),
-    mm=String(d.getMonth()+1).padStart(2,'0'), dd=String(d.getDate()).padStart(2,'0');
-  let hd = {};
-  try {
-    // 1. Hebrew date
-    const hdRes = await fetch(`${HEBCAL}/converter?cfg=json&gy=${yyyy}&gm=${mm}&gd=${dd}&g2h=1`);
-    hd = await hdRes.json();
-    if(hd.hebrew) document.getElementById('hebrewDate').textContent = hd.hebrew;
-    document.getElementById('gregDate').textContent = d.toLocaleDateString('he-IL',{day:'numeric',month:'long',year:'numeric'});
-  } catch(e){ console.error('Hebcal date error',e); }
-
-  try {
-    // 2. Shabbat times + parasha
-    const sh = await(await fetch(
-      `${HEBCAL}/shabbat?cfg=json&latitude=${LOCATION.lat}&longitude=${LOCATION.lng}&tzid=${LOCATION.tzid}&m=${CANDLE_MIN}&b=50`
-    )).json();
-    if(sh.items){
-      const par = sh.items.find(i=>i.category==='parashat');
-      if(par) document.getElementById('parasha').textContent = par.hebrew||par.title;
-      const candles  = sh.items.find(i=>i.category==='candles');
-      const havdalah = sh.items.find(i=>i.category==='havdalah');
-      if(candles)  document.getElementById('sht-candles').textContent  = fmtISO(candles.date);
-      if(havdalah) document.getElementById('sht-havdalah').textContent = fmtISO(havdalah.date);
-    }
-  } catch(e){ console.error('Hebcal shabbat error',e); }
-
-  try {
-    // 3. Events, holidays, omer
-    // Fetch full year so omer items are always included (Hebcal omits them on month-only queries sometimes)
-    const evUrl = `${HEBCAL}/hebcal?v=1&cfg=json&year=${yyyy}`
-      + `&maj=on&min=on&mf=on&ss=on&c=on&omer=on&lg=he`
-      + `&geo=pos&latitude=${LOCATION.lat}&longitude=${LOCATION.lng}&tzid=${LOCATION.tzid}`;
-    const ev = await(await fetch(evUrl)).json();
-
-    if(ev.items){
-      const todayStr = `${yyyy}-${mm}-${dd}`;
-      const todayItems = ev.items.filter(i => {
-        const dt = (i.date || '').slice(0,10);
-        return dt === todayStr;
-      });
-
-      // ── OMER ──
-      const omerItem = todayItems.find(i => i.category==='omer');
-      if(omerItem){
-        // Try .omer field first, then parse from title "3rd day of the Omer" or Hebrew
-        let num = null;
-        if (typeof omerItem.omer === 'number') {
-          num = omerItem.omer;
-        } else {
-          // Try English title: "33rd day of the Omer"
-          const mEn = (omerItem.title||'').match(/^(\d+)/);
-          if (mEn) num = parseInt(mEn[1]);
-          // Try Hebrew title: digits
-          if (!num) num = extractOmerNum(omerItem.hebrew || omerItem.title || '');
-        }
-        if(num && num >= 1 && num <= 49) renderOmerScreen(num);
-        else document.getElementById('screenD').setAttribute('data-omer-active','false');
-      } else {
-        document.getElementById('screenD').setAttribute('data-omer-active','false');
-      }
-
-      // ── HOLIDAY / ROSH CHODESH for header ──
-      const HOLIDAY_CATS = ['holiday','roshchodesh','minor'];
-      const todayHoliday = todayItems.find(i=>HOLIDAY_CATS.includes(i.category));
-
-      // ── TACHANUN logic ──
-      const noTachanun = calcNoTachanun(todayItems, hd);
-      renderTodayInfo(todayHoliday, noTachanun);
-
-      // ── Next upcoming holiday ──
-      const futureHol = ev.items.find(i=>
-        i.category==='holiday' && (i.date||'') > todayStr
-      );
-      if(futureHol){
-        window._nextHolidayText = `לקראת: ${futureHol.hebrew||futureHol.title}`;
-        // Re-render to show it
-        renderTodayInfo(todayHoliday, noTachanun);
-      }
-    }
-  } catch(e){ console.error('Hebcal events error',e); }
-
-  try {
-    // 4. Zmanim
-    await fetchZmanim(yyyy, mm, dd);
-  } catch(e){ console.error('Zmanim error',e); }
-}
-
-// Format ISO datetime string (may include offset) to HH:MM
-function fmtISO(s) {
-  if(!s) return '--:--';
-  const d=new Date(s);
-  return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit',hour12:false,timeZone:'Asia/Jerusalem'});
-}
-
-// Render the today-info panel in the header (top-left)
-function calcNoTachanun(todayItems, hd) {
-  // No tachanun on holidays, Rosh Chodesh, Chol Hamoed, special days
-  const noTachanunCats = ['holiday','roshchodesh','minor'];
-  if (todayItems.some(i => noTachanunCats.includes(i.category))) return true;
-  // Shabbat
-  const dow = new Date().getDay();
-  if (dow === 6) return true;
-  return false;
-}
-
-function renderTodayInfo(holidayItem, noTachanun, hd) {
-  const el = document.getElementById('todayInfo');
-  let html = '';
-
-  // Holiday / Rosh Chodesh name
-  if (holidayItem) {
-    const name = holidayItem.hebrew || holidayItem.title || '';
-    const icon = holidayItem.category==='roshchodesh' ? '🌙' : '✡';
-    html += `<div class="today-holiday"><span class="today-holiday-icon">${icon}</span>${name}</div>`;
-  }
-
-  // Tachanun notice
-  if (noTachanun) {
-    html += `<div class="today-tachanun no-tachanun">🚫 היום אין אומרים תחנון</div>`;
-  }
-
-  // Next holiday (small)
-  if (window._nextHolidayText) {
-    html += `<div class="today-next-holiday">${window._nextHolidayText}</div>`;
-  }
-
-  el.innerHTML = html || `<div class="today-next-holiday" style="opacity:.5;">טוען מידע...</div>`;
-}
-
-async function fetchZmanim(yyyy,mm,dd) {
-  const z=(await(await fetch(
-    `${HEBCAL}/zmanim?cfg=json&latitude=${LOCATION.lat}&longitude=${LOCATION.lng}&tzid=${LOCATION.tzid}&date=${yyyy}-${mm}-${dd}`
-  )).json()).times;
-  if(!z) return;
-  document.getElementById('qz-alot').textContent=fmt(z.alotHaShachar);
-  document.getElementById('qz-sunrise').textContent=fmt(z.sunrise);
-  document.getElementById('qz-sunset').textContent=fmt(z.sunset);
-  document.getElementById('qz-tzeit').textContent=fmt(z.tzeit7083deg||z.tzeitHakochavim);
-  document.getElementById('sht-sunset').textContent=fmt(z.sunset);
-  document.getElementById('sz-shma').textContent=fmt(z.sofZmanShmaGRA);
-  document.getElementById('sz-tfilla').textContent=fmt(z.sofZmanTfilaGRA);
-  document.getElementById('sz-chatzot').textContent=fmt(z.chatzot);
-  document.getElementById('sz-minchag').textContent=fmt(z.minchaGedola);
-  document.getElementById('sz-plag').textContent=fmt(z.plagHaMincha);
-  document.getElementById('fz-container').innerHTML=[
-    {name:'עלות השחר',time:fmt(z.alotHaShachar)},{name:'הנץ החמה',time:fmt(z.sunrise)},
-    {name:'סוף ק"ש',time:fmt(z.sofZmanShmaGRA)},{name:'חצות',time:fmt(z.chatzot)},
-    {name:'מנחה גדולה',time:fmt(z.minchaGedola)},{name:'פלג המנחה',time:fmt(z.plagHaMincha)},
-    {name:'שקיעה',time:fmt(z.sunset)},{name:'צאת הכוכבים',time:fmt(z.tzeit7083deg||z.tzeitHakochavim)},
-  ].map(i=>`<div class="fz-card"><span class="fz-name">${i.name}</span><span class="fz-time">${i.time}</span></div>`).join('');
-}
-// Run Hebcal first, then start rotation so omer flag is already set
-fetchHebcal().then(()=>{
-  setTimeout(showNextScreen, CYCLE_A_MS);
-});
-setInterval(fetchHebcal, 3600*1000);
-
-// ── Firebase: Prayer times ──
-onSnapshot(doc(db,'prayers','times'),snap=>{
-  if(!snap.exists()) return;
-  prayerData=snap.data();
-  [...WEEKDAY_PRAYERS,...SHABBAT_PRAYERS].forEach(({key})=>{
-    const el=document.getElementById(`sp-${key}`);if(el&&prayerData[key])el.textContent=prayerData[key];
-  });
-  refreshPrayers();
-});
-
-function refreshPrayers() {
-  const prayers=isShabbat()?[...WEEKDAY_PRAYERS,...SHABBAT_PRAYERS]:WEEKDAY_PRAYERS;
-  const isShabUI=isShabbat();
-  const custom=(customPrayerData||[]).filter(p=>
-    p.display==='always'||(p.display==='weekday'&&!isShabUI)||(p.display==='shabbat'&&isShabUI)
-  );
-  const stdCards=prayers
-    .filter(({key})=>prayerData[key])
-    .map(({key,label})=>`<div class="fp-card"><span class="fp-name">${label}</span><span class="fp-time">${prayerData[key]}</span></div>`);
-  const cusCards=custom.map(p=>`<div class="fp-card"><span class="fp-name">${p.name||''}</span><span class="fp-time">${p.time||'--:--'}</span></div>`);
-  document.getElementById('fp-container').innerHTML=[...stdCards,...cusCards].join('');
-  buildScreenB(prayers,custom);
-}
-
-function buildScreenB(prayers,custom=[]) {
-  const now=new Date(),nowMins=now.getHours()*60+now.getMinutes();
-  let nextKey=null,minDiff=Infinity;
-  prayers.forEach(({key})=>{
-    const t=prayerData[key];if(!t)return;
-    const[h,m]=t.split(':').map(Number),diff=h*60+m-nowMins;
-    if(diff>0&&diff<minDiff){minDiff=diff;nextKey=key;}
-  });
-  let nextCusIdx=null;
-  custom.forEach((p,i)=>{
-    const t=p.time;if(!t)return;
-    const[h,m]=t.split(':').map(Number),diff=h*60+m-nowMins;
-    if(diff>0&&diff<minDiff){minDiff=diff;nextKey=null;nextCusIdx=i;}
-  });
-  document.getElementById('sb-subtitle').textContent=DAYS_HE[new Date().getDay()];
-  const stdCards=prayers
-    .filter(({key})=>prayerData[key])
-    .map(({key,label})=>`<div class="big-prayer-card ${key===nextKey?'highlight':''}"><span class="bpc-label">${label}</span><span class="bpc-time">${prayerData[key]}</span></div>`);
-  const cusCards=custom.map((p,i)=>`<div class="big-prayer-card ${i===nextCusIdx?'highlight':''}"><span class="bpc-label">${p.name||''}</span><span class="bpc-time">${p.time||'--:--'}</span></div>`);
-  document.getElementById('big-prayers-grid').innerHTML=[...stdCards,...cusCards].join('');
-}
-
-// ── Firebase: Announcements ──
-onSnapshot(query(collection(db,'announcements'),orderBy('createdAt','desc')),snap=>{
-  const el=document.getElementById('fa-container');
-  el.innerHTML=snap.empty
-    ?'<span style="color:rgba(200,164,74,.4)">אין הודעות</span>'
-    :snap.docs.map(d=>`<div class="ann-line">${d.data().text}</div>`).join('');
-});
-
-// ── Firebase: Holiday Prayers ──
-// Shown on the left side-panel when enabled=true
-const HOLIDAY_PRAYER_LABELS = {
-  rh_shacharit:'שחרית', rh_musaf:'מוסף', rh_mincha:'מנחה', yk_neilah:'נעילה',
-  suk_shacharit:'שחרית', suk_musaf:'מוסף', suk_mincha:'מנחה', suk_arvit:'ערבית',
-  pss_shacharit:'שחרית', pss_musaf:'מוסף', pss_mincha:'מנחה', pss_arvit:'ערבית',
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let state = {
+  transactions: [],
+  allTransactions: [],
+  months: {},
+  files: [],
+  incomes: [],        // [{ id, date, desc, amount, cat }]
+  budgets: {},        // { cat: amount }
+  currentMonth: null,
+  dateRange: { from: null, to: null },
+  apiKey: localStorage.getItem('hachama_apikey') || '',
+  chatHistory: []
 };
 
-onSnapshot(doc(db,'prayers','holiday'), snap => {
-  const panel = document.getElementById('holiday-panel');
-  if (!snap.exists() || !snap.data().enabled) {
-    if(panel) panel.style.display='none';
-    return;
+const CAT_COLORS = {
+  'מזון':      '#6c63ff',
+  'מסעדות':   '#ff4d6d',
+  'תחבורה':   '#06d6a0',
+  'בריאות':   '#ffa552',
+  'בידור':    '#00b4fc',
+  'חשבונות':  '#e040fb',
+  'ביגוד':    '#ff6b35',
+  'חינוך':    '#69db7c',
+  'אחר':      '#adb5bd',
+  'כללי':     '#748ffc',
+  'ביטוח':    '#ffd43b',
+  'בנק':      '#fa5252',
+  'קניות':    '#cc5de8',
+  'ספורט':    '#20c997',
+  'תקשורת':   '#4dabf7',
+  'חיסכון':   '#51cf66',
+};
+
+// Dynamic color palette — assigned to unknown categories consistently
+const _DYNAMIC_PALETTE = [
+  '#6c63ff','#ff4d6d','#06d6a0','#ffa552','#00b4fc',
+  '#e040fb','#ff6b35','#69db7c','#ffd43b','#fa5252',
+  '#cc5de8','#20c997','#4dabf7','#51cf66','#f06595',
+  '#74c0fc','#63e6be','#ffec99','#a9e34b','#da77f2',
+];
+const _dynamicCatMap = {};
+let   _dynamicCatIdx = 0;
+
+function getCatColor(cat) {
+  if (!cat) return '#adb5bd';
+  if (CAT_COLORS[cat]) return CAT_COLORS[cat];
+  if (_dynamicCatMap[cat]) return _dynamicCatMap[cat];
+  // Assign next color from palette, cycling if needed
+  const color = _DYNAMIC_PALETTE[_dynamicCatIdx % _DYNAMIC_PALETTE.length];
+  _dynamicCatIdx++;
+  _dynamicCatMap[cat] = color;
+  return color;
+}
+
+const INC_COLORS = {
+  'משכורת':    '#22c55e',
+  'פרילנס':    '#06d6a0',
+  'שכר דירה': '#4dabf7',
+  'השקעות':   '#a855f7',
+  'בונוס':     '#ffd43b',
+  'מתנה':      '#ff6b35',
+  'החזר':      '#74c0fc',
+  'אחר':       '#adb5bd',
+};
+
+const CAT_KEYWORDS = {
+  'מזון': ['שופרסל','רמי לוי','מגה','יינות ביתן','AM:PM','קופיקס','מינימרקט','סופר','יוחננוף','מחסני השוק','חצי חינם','ויקטורי'],
+  'מסעדות': ['מקדונלד','בורגר','פיצה','שווארמה','סושי','קפה','coffeehouse','resto','restaurant','cafe','קפה','מסעדה','ביסטרו'],
+  'תחבורה': ['פז','סונול','דור','אלון','מתחם הדלק','רב-קו','מטרו','רכבת','תחנה','גט','אוטובוס','parking','חניה','uber','bolt'],
+  'בריאות': ['קופת חולים','מאוחדת','כללית','מכבי','לאומית','ביה"ח','בית חולים','דרוגסטור','בית מרקחת','super-pharm','super pharm','לילי','pharmacy'],
+  'בידור': ['yes','HOT','netflix','spotify','apple','google play','steam','cinema','סינמה','קולנוע','תיאטרון','youtube'],
+  'חשבונות': ['חשמל','מים','גז','ארנונה','ועד','ביוב','בזק','פרטנר','HOT mobile','012','cellcom','orange','רשות'],
+  'ביגוד': ['זארה','H&M','FACTORY 54','CASTRO','גולף','renuar','FOX','TERMINAL X','מנגו','primark'],
+  'חינוך': ['גן ילדים','בית ספר','אוניברסיטה','מכללה','קורס','udemy','coursera'],
+};
+
+function autoCategory(desc) {
+  if (!desc) return 'אחר';
+  const d = desc.toLowerCase();
+  for (const [cat, keys] of Object.entries(CAT_KEYWORDS)) {
+    if (keys.some(k => d.includes(k.toLowerCase()))) return cat;
   }
-  const hol = snap.data();
-  if(panel) panel.style.display='block';
+  return 'אחר';
+}
 
-  // Update holiday panel title
-  const titleEl = document.getElementById('holiday-panel-title');
-  if(titleEl) titleEl.textContent = hol.holidayName || 'תפילות חגים';
+// ─── FIREBASE STORAGE ────────────────────────────────────────────────────────
+let _currentUser = null;
+let _unsubscribe = null;
 
-  // Build rows — show only sections that have at least one time set
-  const sections = [
-    { label:'ר"ה / יוה"כ', keys:['rh_shacharit','rh_musaf','rh_mincha','yk_neilah'] },
-    { label:'סוכות / שמ"ע', keys:['suk_shacharit','suk_musaf','suk_mincha','suk_arvit'] },
-    { label:'פסח / שבועות',  keys:['pss_shacharit','pss_musaf','pss_mincha','pss_arvit'] },
-  ];
+function getUserDocRef() {
+  if (!_currentUser || !window._db) return null;
+  const { doc } = window._firestoreFns;
+  return doc(window._db, 'users', _currentUser.uid);
+}
 
-  let html = '';
-  sections.forEach(sec => {
-    const rows = sec.keys.filter(k=>hol[k]).map(k=>
-      `<div class="prayer-item"><span class="prayer-name">${HOLIDAY_PRAYER_LABELS[k]}</span><span class="prayer-time">${hol[k]}</span></div>`
-    ).join('');
-    if(rows) html += `<div class="section-title" style="margin-top:6px;">${sec.label}</div>${rows}`;
+async function saveState() {
+  const ref = getUserDocRef();
+  const payload = { months: state.months, files: state.files, incomes: state.incomes, budgets: state.budgets, updatedAt: new Date().toISOString() };
+  if (ref) {
+    try {
+      const { setDoc } = window._firestoreFns;
+      await setDoc(ref, payload, { merge: true });
+    } catch(e) {
+      console.error('Firebase save error:', e);
+      showToast('⚠️ שגיאה בשמירה ל-Firebase');
+      try { localStorage.setItem('finish_state', JSON.stringify(payload)); } catch(_){}
+    }
+  } else {
+    try { localStorage.setItem('finish_state', JSON.stringify(payload)); } catch(e){}
+  }
+}
+
+async function loadFromFirebase(uid) {
+  const { doc, getDoc } = window._firestoreFns;
+  try {
+    const ref = doc(window._db, 'users', uid);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      if (data.months)  state.months  = data.months;
+      if (data.files)   state.files   = data.files;
+      if (data.incomes) state.incomes = data.incomes;
+      if (data.budgets) state.budgets = data.budgets;
+      rebuildAllTransactions();
+      afterLoad();
+      showToast('☁️ נתונים נטענו מהענן');
+    } else {
+      loadFromLocalStorage();
+    }
+  } catch(e) {
+    console.error('Firebase load error:', e);
+    loadFromLocalStorage();
+  }
+}
+
+function loadFromLocalStorage() {
+  try {
+    const s = JSON.parse(localStorage.getItem('finish_state') || '{}');
+    if (s.months)  state.months  = s.months;
+    if (s.files)   state.files   = s.files;
+    if (s.incomes) state.incomes = s.incomes;
+    if (s.budgets) state.budgets = s.budgets;
+    rebuildAllTransactions();
+    afterLoad();
+  } catch(e) {}
+}
+
+function afterLoad() {
+  // Default range: last 30 days
+  const today = new Date();
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  const toStr   = today.toISOString().split('T')[0];
+  const fromStr = monthAgo.toISOString().split('T')[0];
+  document.getElementById('rangeFrom').value = fromStr;
+  document.getElementById('rangeTo').value   = toStr;
+  applyDateRange(true);
+  renderMonthSummary();
+  renderFileRegistry();
+  renderDashboard();
+  renderIncome();
+  renderBudget();
+}
+
+// ─── AUTH ────────────────────────────────────────────────────────────────────
+function handleAuth() {
+  if (_currentUser) {
+    if (confirm('להתנתק?')) {
+      window._signOut(window._auth).then(() => showToast('👋 התנתקת'));
+    }
+  } else {
+    window._signInWithPopup(window._auth, window._provider)
+      .catch(e => showToast('❌ שגיאת כניסה: ' + e.message));
+  }
+}
+
+// Init auth listener (runs after Firebase module loads)
+setTimeout(() => {
+  if (!window._onAuthStateChanged) return;
+  window._onAuthStateChanged(window._auth, user => {
+    _currentUser = user;
+    const statusEl = document.getElementById('authStatus');
+    const btnEl    = document.getElementById('authBtn');
+    if (user) {
+      statusEl.textContent = `✓ מחובר: ${user.email}`;
+      statusEl.style.color = 'var(--accent3)';
+      btnEl.textContent    = `🚪 ${user.displayName || user.email} — התנתק`;
+      loadFromFirebase(user.uid);
+    } else {
+      statusEl.textContent = 'לא מחובר — נתונים נשמרים מקומית';
+      statusEl.style.color = 'var(--text3)';
+      btnEl.textContent    = '🔐 כניסה עם Google';
+      loadFromLocalStorage();
+    }
   });
+}, 200);
+function rebuildAllTransactions() {
+  state.allTransactions = Object.values(state.months).flat();
+  applyDateRange(true);
+}
+function applyDateRange(silent) {
+  const fromEl = document.getElementById('rangeFrom');
+  const toEl = document.getElementById('rangeTo');
+  const from = fromEl ? fromEl.value : null;
+  const to = toEl ? toEl.value : null;
+  state.dateRange = { from: from || null, to: to || null };
 
-  const listEl = document.getElementById('holiday-prayer-list');
-  if(listEl) listEl.innerHTML = html;
-});
-
-// ── Firebase: Custom / Manual Prayers ──
-let customPrayerData = [];
-onSnapshot(query(collection(db,'prayers_custom'),orderBy('order','asc')), snap => {
-  customPrayerData = snap.docs.map(d=>d.data());
-  renderCustomPrayers();
-});
-
-function renderCustomPrayers() {
-  const isShabUI = isShabbat();
-  const active = customPrayerData.filter(p=>
-    p.display==='always' ||
-    (p.display==='weekday' && !isShabUI) ||
-    (p.display==='shabbat' && isShabUI)
-  );
-
-  // Add to side panel — after the standard prayer list
-  const sidePanelSection = document.querySelector('#screenA .side-panel .panel-section');
-  if (sidePanelSection) {
-    sidePanelSection.querySelectorAll('[data-custom-prayer]').forEach(el=>el.remove());
-    active.forEach(p=>{
-      const row = document.createElement('div');
-      row.className='prayer-item';
-      row.dataset.customPrayer='1';
-      row.innerHTML='<span class="prayer-name">'+(p.name||'')+'</span><span class="prayer-time">'+(p.time||'--:--')+'</span>';
-      sidePanelSection.appendChild(row);
+  if (from || to) {
+    state.transactions = state.allTransactions.filter(t => {
+      if (from && t.date < from) return false;
+      if (to && t.date > to) return false;
+      return true;
     });
-  }
-}
-
-// ── Firebase: Shiurim (shown in footer slideshow as extra slide) ──
-const DAY_SHORT = ['א׳','ב׳','ג׳','ד׳','ה׳','ו׳','שבת'];
-
-onSnapshot(query(collection(db,'shiurim'),orderBy('createdAt','desc')), snap => {
-  // Remove old shiurim footer slides
-  document.querySelectorAll('.footer-slide[data-shiur]').forEach(el=>el.remove());
-  document.querySelectorAll('.dot[data-shiur]').forEach(el=>el.remove());
-
-  if(snap.empty) return;
-
-  const footer = document.querySelector('.footer');
-  const dotsEl = document.getElementById('footerDots');
-
-  // Group into pages of 3 items per slide
-  const items = snap.docs.map(d=>d.data());
-  const pages = [];
-  for(let i=0;i<items.length;i+=3) pages.push(items.slice(i,i+3));
-
-  pages.forEach((page, idx) => {
-    const el = document.createElement('div');
-    el.className = 'footer-slide';
-    el.dataset.shiur = '1';
-    const rows = page.map(s=>{
-      const dayStr = (s.day>=0 && s.day<=6) ? DAY_SHORT[s.day] : (s.date||'');
-      return `<div class="ann-line" style="display:flex;justify-content:space-between;gap:12px;">
-        <span>${s.title||''}${s.details?` — ${s.details}`:''}${dayStr?` | ${dayStr}`:''}${s.time?` ${s.time}`:''}</span>
-      </div>`;
-    }).join('');
-    el.innerHTML = `<div class="slide-label">שיעורים ואירועים</div><div class="footer-announcements">${rows}</div>`;
-    footer.insertBefore(el, dotsEl);
-    const dot = document.createElement('div');
-    dot.className='dot'; dot.dataset.shiur='1';
-    dotsEl.appendChild(dot);
-  });
-
-  // Recalculate total footer count
-  footerCount = document.querySelectorAll('.footer-slide').length;
-});
-
-// ── Firebase: Custom Screens ──
-onSnapshot(query(collection(db,'custom_screens'),orderBy('order','asc')),snap=>{
-  customSlides=[];footerCustom=[];
-  snap.docs.forEach(d=>{
-    const data={id:d.id,...d.data()};
-    if(!isSlideActive(data)) return;
-    if(data.displayMode==='footer') footerCustom.push(data);
-    else customSlides.push(data);
-  });
-  rebuildFooterCustomSlides();
-  rebuildScreenCQueue();
-});
-
-// ── Footer custom slides ──
-function rebuildFooterCustomSlides() {
-  document.querySelectorAll('.footer-slide[data-custom]').forEach(el=>el.remove());
-  document.querySelectorAll('.dot[data-custom]').forEach(el=>el.remove());
-  const footer=document.querySelector('.footer'),dotsEl=document.getElementById('footerDots');
-  footerCount=3+footerCustom.length;
-  footerCustom.forEach((slide,idx)=>{
-    const el=document.createElement('div');
-    el.className='footer-slide';el.id=`fs-custom-${idx}`;el.dataset.custom='1';
-    el.innerHTML=buildFooterCustomHTML(slide);
-    footer.insertBefore(el,dotsEl);
-    const dot=document.createElement('div');dot.className='dot';dot.dataset.custom='1';
-    dotsEl.appendChild(dot);
-  });
-}
-
-function buildFooterCustomHTML(slide) {
-  const hasImg=slide.imageUrl,hasText=slide.title||slide.body;
-  if(hasImg&&hasText) return `<div class="footer-custom-slide"><div class="footer-cs-img"><img src="${slide.imageUrl}" alt="" loading="lazy"></div><div class="footer-cs-text">${slide.title?`<div class="footer-cs-title">${slide.title}</div>`:''} ${slide.body?`<div class="footer-cs-body">${slide.body}</div>`:''}</div></div>`;
-  if(hasImg) return `<div class="footer-custom-slide" style="justify-content:center;"><div class="footer-cs-img" style="width:90px;height:90px;"><img src="${slide.imageUrl}" alt=""></div></div>`;
-  return `<div class="footer-custom-slide" style="justify-content:center;"><div class="footer-cs-text" style="text-align:center;max-width:100%;">${slide.title?`<div class="footer-cs-title">${slide.title}</div>`:''} ${slide.body?`<div class="footer-cs-body">${slide.body}</div>`:''}</div></div>`;
-}
-
-// ── Footer slideshow ──
-let footerIdx=0;
-setInterval(()=>{
-  footerIdx=(footerIdx+1)%footerCount;
-  document.querySelectorAll('.footer-slide').forEach((el,i)=>el.classList.toggle('active',i===footerIdx));
-  document.querySelectorAll('.dot').forEach((el,i)=>el.classList.toggle('active',i===footerIdx));
-},FOOTER_INT);
-
-// ── Screen C queue ──
-let screenCQueue=[],screenCIdx=0;
-function rebuildScreenCQueue(){screenCQueue=[...customSlides];screenCIdx=0;}
-
-function loadNextScreenC(){
-  if(!screenCQueue.length) return false;
-  renderScreenC(screenCQueue[screenCIdx%screenCQueue.length]);
-  screenCIdx++;
-  return true;
-}
-
-function renderScreenC(slide) {
-  const sc=document.getElementById('screenC');
-  const inner=document.getElementById('screenCInner');
-  const bgImg=document.getElementById('csBgImage');
-  const bgDimmer=document.getElementById('csBgDimmer');
-
-  sc.className=`screen theme-${slide.theme||'gold'}`;
-
-  // Background image
-  if(slide.bgImageUrl) {
-    bgImg.style.backgroundImage=`url('${slide.bgImageUrl}')`;
-    const dim=slide.bgDimOpacity??0.55;
-    bgDimmer.style.background=`rgba(0,0,0,${dim})`;
-    sc.style.background='transparent';
+    const badge = document.getElementById('rangeBadge');
+    if (badge) {
+      badge.style.display = 'inline';
+      badge.textContent = `${state.transactions.length} עסקאות`;
+    }
   } else {
-    bgImg.style.backgroundImage='none';
-    bgDimmer.style.background='transparent';
-    // restore theme bg
-    const themeBgs={gold:'linear-gradient(160deg,#1a0e05 0%,#2d1a0a 40%,#1a0e05 100%)',blue:'linear-gradient(160deg,#050d1a,#0a1a2d)',green:'linear-gradient(160deg,#050f07,#0a1f0d)',purple:'linear-gradient(160deg,#0d0515,#1a0a2d)',red:'linear-gradient(160deg,#150505,#2d0a0a)'};
-    sc.style.background=themeBgs[slide.theme||'gold']||themeBgs.gold;
+    // No filter — use all
+    state.transactions = [...state.allTransactions];
+    const badge = document.getElementById('rangeBadge');
+    if (badge) badge.style.display = 'none';
   }
 
-  const hasImg=slide.imageUrl,hasText=slide.title||slide.body;
-  let layout='layout-text-image';
-  if(hasImg&&!hasText) layout='layout-image-only';
-  if(!hasImg&&hasText)  layout='layout-text-only';
-  inner.className=`cs-fullscreen ${layout}`;
+  // Derive currentMonth from range (latest month in range)
+  const months = [...new Set(state.transactions.map(t => t.date.substring(0,7)))].sort();
+  state.currentMonth = months[months.length - 1] || null;
 
-  let html='';
-  if(hasText) html+=`<div class="cs-text-wrap">${slide.badge?`<div class="cs-badge">${slide.badge}</div>`:''} ${slide.title?`<div class="cs-title">${slide.title}</div>`:''} ${slide.body?`<div class="cs-body">${slide.body}</div>`:''}</div>`;
-  if(hasImg)  html+=`<div class="cs-image-wrap"><img src="${slide.imageUrl}" alt="" loading="lazy"></div>`;
-  inner.innerHTML=html;
-}
-
-// ── Hebrew number → text ──
-const ONES = ['','אחד','שניים','שלושה','ארבעה','חמישה','שישה','שבעה','שמונה','תשעה',
-              'עשרה','אחד עשר','שנים עשר','שלושה עשר','ארבעה עשר','חמישה עשר',
-              'שישה עשר','שבעה עשר','שמונה עשר','תשעה עשר'];
-const TENS = ['','','עשרים','שלושים','ארבעים'];
-const WEEKS_HE = ['','שבוע אחד','שבועיים','שלושה שבועות','ארבעה שבועות',
-                  'חמישה שבועות','שישה שבועות','שבעה שבועות'];
-
-function numToHebrew(n) {
-  if (n < 20) return ONES[n];
-  const t = Math.floor(n/10), o = n%10;
-  return o===0 ? TENS[t] : TENS[t]+' ו'+ONES[o];
-}
-
-function omerFullText(day) {
-  const weeks  = Math.floor(day/7);
-  const remain = day % 7;
-  let text = 'היום ' + numToHebrew(day) + (day===2?'':' ') + 'יום';
-  if (day === 1)  text = 'היום יום אחד';
-  if (day === 2)  text = 'היום שני ימים';
-  if (day > 6) {
-    text += ' — ';
-    if (weeks > 0 && remain === 0) text += WEEKS_HE[weeks];
-    else if (weeks > 0) text += WEEKS_HE[weeks] + ' ו' + numToHebrew(remain) + ' ימים';
+  if (!silent) {
+    const activePanel = document.querySelector('.panel.active');
+    if (activePanel) {
+      const id = activePanel.id.replace('panel-','');
+      if (id === 'dashboard')    renderDashboard();
+      if (id === 'transactions') renderTransactions();
+      if (id === 'history')      renderHistory();
+      if (id === 'income')       renderIncome();
+      if (id === 'budget')       renderBudget();
+    }
+    renderMonthSummary();
+    showToast(from || to ? `📅 מציג ${state.transactions.length} עסקאות בטווח` : '📅 מציג את כל הנתונים');
   }
-  text += ' לעומר';
-  return text;
 }
 
-function weeksLine(day) {
-  const w = Math.floor(day/7), r = day%7;
-  if (w === 0) return '';
-  if (r === 0) return WEEKS_HE[w] + ' שלמים';
-  return WEEKS_HE[w] + ' ו' + numToHebrew(r) + ' ימים';
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function showTab(id, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  const clickedBtn = btn || event.target;
+  if (clickedBtn) clickedBtn.classList.add('active');
+  if (id === 'dashboard')    renderDashboard();
+  if (id === 'transactions') renderTransactions();
+  if (id === 'history')      renderHistory();
+  if (id === 'income')       renderIncome();
+  if (id === 'budget')       renderBudget();
 }
 
-// Extract number from Hebrew string like "ב׳ בעומר" or use API omer field
-function extractOmerNum(str) {
-  const m = str && str.match(/(\d+)/);
-  return m ? parseInt(m[1]) : null;
+// ─── FILE IMPORT ──────────────────────────────────────────────────────────────
+const dropZone = document.getElementById('dropZone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('dragover'); if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+
+let rawRows = [], rawHeaders = [];
+
+function handleFile(file) {
+  if (!file) return;
+  window._lastFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      // Find header row
+      let headerRow = 0;
+      for (let i = 0; i < Math.min(10, data.length); i++) {
+        if (data[i].filter(c => String(c).trim()).length >= 3) { headerRow = i; break; }
+      }
+      rawHeaders = data[headerRow].map(h => String(h).trim());
+      rawRows = data.slice(headerRow + 1).filter(r => r.some(c => String(c).trim()));
+
+      // Populate selects
+      const opts = rawHeaders.map((h,i) => `<option value="${i}">${h || '(עמודה '+(i+1)+')'}</option>`).join('');
+      ['mapDate','mapDesc','mapAmount','mapCat'].forEach(id => {
+        const el = document.getElementById(id);
+        el.innerHTML = (id === 'mapCat' ? '<option value="">— ללא —</option>' : '') + opts;
+      });
+
+      // Auto-detect
+      autoDetect();
+
+      document.getElementById('mapperSection').style.display = 'block';
+      document.getElementById('importCount').textContent = `${rawRows.length} שורות נמצאו`;
+      showToast(`📂 נטען: ${file.name} — ${rawRows.length} רשומות`);
+    } catch(err) {
+      showToast('❌ שגיאה בטעינת הקובץ: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
-// Render Screen D with omer data
-function renderOmerScreen(day) {
-  const mainText  = omerFullText(day);
-  const weeksStr  = weeksLine(day);
-  document.getElementById('omerDayNum').textContent   = day;
-  document.getElementById('omerCountText').textContent = mainText;
-  document.getElementById('omerWeeksText').textContent = weeksStr;
-  document.getElementById('screenD').setAttribute('data-omer-active','true');
+function autoDetect() {
+  const hLower = rawHeaders.map(h => h.toLowerCase());
+  const dateKw = ['תאריך','date','תאריך עסקה','תאריך חיוב'];
+  const descKw = ['תיאור','שם','עסק','פירוט','שם עסק','description','name','ביאור','סוג עסקה'];
+  const amtKw = ['סכום','amount','חיוב','זכות','סכום עסקה','סכום חיוב'];
+  const catKw = ['קטגוריה','category','סוג'];
+
+  const best = (kws) => {
+    for (const kw of kws) { const i = hLower.findIndex(h => h.includes(kw)); if (i>=0) return i; }
+    return 0;
+  };
+  document.getElementById('mapDate').value = best(dateKw);
+  document.getElementById('mapDesc').value = best(descKw);
+  document.getElementById('mapAmount').value = best(amtKw);
+  const catIdx = best(catKw);
+  document.getElementById('mapCat').value = catIdx > 0 ? catIdx : '';
 }
 
-// ── Offline detection + auto-refresh ──
-let offlineTimer = null;
-let offlineSeconds = 0;
-const OFFLINE_RETRY_SECS = 180; // נסה שוב כל 3 דקות
+function parseAmount(v) {
+  if (v === '' || v === null || v === undefined) return 0;
+  return parseFloat(String(v).replace(/[^\d.\-]/g, '')) || 0;
+}
 
-function checkOnline() {
-  const banner = document.getElementById('offlineBanner');
-  if (navigator.onLine) {
-    banner.classList.remove('show');
-    if (offlineTimer) { clearInterval(offlineTimer); offlineTimer=null; }
-  } else {
-    banner.classList.add('show');
-    if (!offlineTimer) {
-      offlineSeconds = OFFLINE_RETRY_SECS;
-      offlineTimer = setInterval(() => {
-        offlineSeconds--;
-        const cd = document.getElementById('offlineCountdown');
-        if (offlineSeconds > 0) {
-          cd.textContent = ` (רענון בעוד ${offlineSeconds} שניות)`;
-        } else {
-          cd.textContent = ' — מרענן...';
-          clearInterval(offlineTimer); offlineTimer=null;
-          // Try a lightweight ping; if it succeeds reload, else restart counter
-          fetch('https://www.hebcal.com/ping', {mode:'no-cors',cache:'no-store'})
-            .then(()=>location.reload())
-            .catch(()=>{ offlineSeconds=OFFLINE_RETRY_SECS; offlineTimer=setInterval(arguments.callee,1000); });
-        }
-      }, 1000);
+function parseDate(v) {
+  if (!v) return new Date().toISOString().split('T')[0];
+  if (typeof v === 'number') {
+    const d = XLSX.SSF.parse_date_code(v);
+    return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  const s = String(v).trim();
+  // DD/MM/YYYY
+  const m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m) {
+    const y = m[3].length === 2 ? '20'+m[3] : m[3];
+    return `${y}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  }
+  // YYYY-MM-DD
+  const m2 = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m2) return `${m2[1]}-${m2[2]}-${m2[3]}`;
+  return new Date().toISOString().split('T')[0];
+}
+
+function importData() {
+  const di = parseInt(document.getElementById('mapDate').value);
+  const li = parseInt(document.getElementById('mapDesc').value);
+  const ai = parseInt(document.getElementById('mapAmount').value);
+  const ci = document.getElementById('mapCat').value;
+
+  const txs = [];
+  for (const row of rawRows) {
+    const amount = parseAmount(row[ai]);
+    if (amount === 0) continue;
+    const desc = String(row[li] || '').trim() || 'ללא תיאור';
+    const date = parseDate(row[di]);
+    const cat = ci !== '' ? (String(row[parseInt(ci)] || '').trim() || autoCategory(desc)) : autoCategory(desc);
+    txs.push({ id: Date.now() + Math.random(), date, desc, amount: Math.abs(amount), cat });
+  }
+
+  if (txs.length === 0) { showToast('⚠️ לא נמצאו עסקאות תקינות'); return; }
+
+  // Assign file id to each tx for traceability
+  const fileId = 'f_' + Date.now();
+  const fileMonths = new Set();
+  txs.forEach(tx => {
+    tx.fileId = fileId;
+    const monthKey = tx.date.substring(0, 7);
+    fileMonths.add(monthKey);
+    if (!state.months[monthKey]) state.months[monthKey] = [];
+    state.months[monthKey].push(tx);
+  });
+
+  // Register file
+  state.files.push({
+    id: fileId,
+    name: window._lastFileName || 'קובץ לא ידוע',
+    importedAt: new Date().toLocaleDateString('he-IL'),
+    txCount: txs.length,
+    months: [...fileMonths].sort()
+  });
+
+  rebuildAllTransactions();
+
+  if (!state.dateRange.from && !state.dateRange.to) {
+    const allDates = state.allTransactions.map(t=>t.date).sort();
+    if (allDates.length) {
+      document.getElementById('rangeFrom').value = allDates[0];
+      document.getElementById('rangeTo').value = allDates[allDates.length-1];
+      applyDateRange(true);
     }
   }
+
+  saveState();
+  renderMonthSummary();
+  renderFileRegistry();
+  showToast(`✅ יובאו ${txs.length} עסקאות בהצלחה`);
 }
 
-window.addEventListener('online',  ()=>{ checkOnline(); fetchHebcal(); });
-window.addEventListener('offline', checkOnline);
-setInterval(checkOnline, 30000); // background check every 30s
-checkOnline();
-
-// ── Master rotation ──
-const allScreenIds=['screenA','screenB','screenC','screenD'];
-let rotation=[],rotIdx=0,rotTimer=null;
-
-function buildRotation(){
-  rotation=['screenA','screenB'];
-  if(screenCQueue.length) rotation.push('screenC');
-  const omerEl = document.getElementById('screenD');
-  if(omerEl && omerEl.getAttribute('data-omer-active')==='true') rotation.push('screenD');
+function renderFileRegistry() {
+  const el = document.getElementById('fileRegistry');
+  if (!el) return;
+  if (!state.files.length) {
+    el.innerHTML = '<p class="text-muted">אין קבצים מיובאים.</p>';
+    return;
+  }
+  el.innerHTML = state.files.map(f => `
+    <div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <div style="font-size:20px">📄</div>
+      <div style="flex:1;min-width:120px">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${f.name}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:2px">
+          יובא ב-${f.importedAt} &nbsp;·&nbsp; ${f.txCount} עסקאות &nbsp;·&nbsp; ${f.months.map(m=>formatMonthHe(m)).join(', ')}
+        </div>
+      </div>
+      <button class="btn btn-danger btn-sm" onclick="deleteFile('${f.id}')">🗑️ מחק קובץ</button>
+    </div>
+  `).join('');
 }
 
-function showNextScreen(){
-  if(rotTimer) clearTimeout(rotTimer);
-  buildRotation();
-  const current=rotation[rotIdx%rotation.length];
-  allScreenIds.forEach(id=>document.getElementById(id).classList.remove('active'));
-  if(current==='screenC'){if(!loadNextScreenC()){rotIdx++;showNextScreen();return;}}
-  document.getElementById(current).classList.add('active');
-  const dur = current==='screenB'?CYCLE_B_MS : current==='screenC'?CYCLE_C_MS : current==='screenD'?CYCLE_D_MS : CYCLE_A_MS;
-  rotIdx++;
-  if(current==='screenC'&&screenCIdx<screenCQueue.length){
-    rotTimer=setTimeout(()=>{loadNextScreenC();rotTimer=setTimeout(showNextScreen,dur);},dur);
-  } else {
-    rotTimer=setTimeout(showNextScreen,dur);
+function deleteFile(fileId) {
+  const file = state.files.find(f => f.id === fileId);
+  if (!file) return;
+  if (!confirm(`למחוק את הקובץ "${file.name}" ו-${file.txCount} העסקאות שלו?`)) return;
+
+  // Remove all txs with this fileId
+  for (const m of Object.keys(state.months)) {
+    state.months[m] = state.months[m].filter(t => t.fileId !== fileId);
+    if (state.months[m].length === 0) delete state.months[m];
+  }
+  state.files = state.files.filter(f => f.id !== fileId);
+
+  rebuildAllTransactions();
+  saveState();
+  renderMonthSummary();
+  renderFileRegistry();
+  renderHistory();
+  showToast(`🗑️ "${file.name}" נמחק`);
+}
+
+function renderMonthSummary() {
+  const el = document.getElementById('monthSummary');
+  const months = Object.keys(state.months).sort().reverse();
+  if (!months.length) { el.innerHTML = '<div class="empty-state" style="padding:20px"><p>עדיין לא יובאו נתונים.</p></div>'; return; }
+  const from = state.dateRange.from;
+  const to = state.dateRange.to;
+  el.innerHTML = months.map(m => {
+    const txs = state.months[m];
+    const total = txs.reduce((s,t) => s+t.amount, 0);
+    const inRange = !from && !to ? true : txs.some(t => (!from || t.date >= from) && (!to || t.date <= to));
+    const active = inRange ? 'background:rgba(108,99,255,0.07);border-right:3px solid var(--accent);padding-right:9px;' : '';
+    return `<div class="month-row" style="${active}cursor:pointer" onclick="jumpToMonth('${m}')">
+      <span class="month-name">${formatMonthHe(m)}</span>
+      <span class="month-amount">${fmtILS(total)}</span>
+      <span class="text-muted" style="font-size:12px">${txs.length} עסקאות</span>
+      ${inRange ? '<span style="font-size:11px;color:var(--accent);font-weight:700">בטווח</span>' : ''}
+    </div>`;
+  }).join('');
+}
+
+function jumpToMonth(m) {
+  // Set the date range to exactly that month (1st to last day)
+  const [y, mo] = m.split('-');
+  const lastDay = new Date(parseInt(y), parseInt(mo), 0).getDate();
+  document.getElementById('rangeFrom').value = `${m}-01`;
+  document.getElementById('rangeTo').value = `${m}-${String(lastDay).padStart(2,'0')}`;
+  applyDateRange();
+  showToast(`📅 עברת לחודש ${formatMonthHe(m)}`);
+}
+
+function selectMonth(m) {
+  jumpToMonth(m);
+}
+
+// ─── DASHBOARD ────────────────────────────────────────────────────────────────
+let catChartInst, timeChartInst, topChartInst;
+
+function renderDashboard() {
+  if (!state.transactions.length) {
+    document.getElementById('dashEmpty').style.display = 'block';
+    document.getElementById('dashContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('dashEmpty').style.display = 'none';
+  document.getElementById('dashContent').style.display = 'block';
+
+  const txs = state.transactions;
+  const total = txs.reduce((s,t) => s+t.amount, 0);
+  const avg = total / txs.length;
+  const cats = {};
+  txs.forEach(t => { cats[t.cat] = (cats[t.cat]||0)+t.amount; });
+  const topCat = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0];
+
+  // Compare: find txs outside the current range (previous period of same length)
+  let diffHtml = '';
+  const from = state.dateRange.from;
+  const to = state.dateRange.to;
+  if (from && to) {
+    const rangeMs = new Date(to) - new Date(from);
+    const prevTo = new Date(new Date(from) - 1).toISOString().split('T')[0];
+    const prevFrom = new Date(new Date(from) - rangeMs - 86400000).toISOString().split('T')[0];
+    const prevTxs = state.allTransactions.filter(t => t.date >= prevFrom && t.date <= prevTo);
+    if (prevTxs.length) {
+      const prevTotal = prevTxs.reduce((s,t)=>s+t.amount,0);
+      const diff = ((total - prevTotal) / prevTotal * 100).toFixed(1);
+      const col = diff > 0 ? 'var(--accent2)' : 'var(--accent3)';
+      diffHtml = `<span style="color:${col};font-size:12px">${diff > 0 ? '▲' : '▼'} ${Math.abs(diff)}% מהתקופה הקודמת</span>`;
+    }
+  }
+
+  // Range label
+  const rangeLabel = (from && to)
+    ? `${formatDateHe(from)} – ${formatDateHe(to)}`
+    : `${txs.length} עסקאות`;
+
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card c1"><div class="stat-label">סה"כ הוצאות</div><div class="stat-value c1">${fmtILS(total)}</div>${diffHtml}<div class="stat-sub">${rangeLabel}</div></div>
+    <div class="stat-card c2"><div class="stat-label">מספר עסקאות</div><div class="stat-value c2">${txs.length}</div><div class="stat-sub">ממוצע לעסקה: ${fmtILS(avg)}</div></div>
+    <div class="stat-card c3"><div class="stat-label">קטגוריה מובילה</div><div class="stat-value c3" style="font-size:18px">${topCat ? topCat[0] : '—'}</div><div class="stat-sub">${topCat ? fmtILS(topCat[1]) : ''}</div></div>
+    <div class="stat-card c4"><div class="stat-label">ממוצע יומי</div><div class="stat-value c4">${fmtILS(total/30)}</div><div class="stat-sub">מחושב על 30 יום</div></div>
+  `;
+
+  // Category chart — with visible borders between slices
+  const catEntries = Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const catColors = catEntries.map((e,i) => getCatColor(e[0]));
+  if (catChartInst) catChartInst.destroy();
+  catChartInst = new Chart(document.getElementById('catChart'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(e=>e[0]),
+      datasets: [{
+        data: catEntries.map(e=>e[1]),
+        backgroundColor: catColors,
+        borderColor: '#0a0a0f',
+        borderWidth: 3,
+        hoverOffset: 10,
+        hoverBorderWidth: 3
+      }]
+    },
+    options: {
+      plugins: {
+        legend: {
+          position: 'right',
+          labels: {
+            color: '#e8e8f0',
+            font: { size: 12 },
+            boxWidth: 14,
+            boxHeight: 14,
+            padding: 10,
+            usePointStyle: true,
+            pointStyle: 'rectRounded',
+            generateLabels: (chart) => {
+              const data = chart.data;
+              return data.labels.map((label, i) => ({
+                text: `${label}  ${fmtILS(data.datasets[0].data[i])}`,
+                fillStyle: data.datasets[0].backgroundColor[i],
+                strokeStyle: data.datasets[0].backgroundColor[i],
+                fontColor: '#e8e8f0',
+                lineWidth: 0,
+                hidden: false,
+                index: i
+              }));
+            }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${ctx.label}: ${fmtILS(ctx.raw)} (${(ctx.raw/total*100).toFixed(1)}%)`
+          }
+        }
+      },
+      cutout: '60%',
+      responsive: true,
+      maintainAspectRatio: false
+    }
+  });
+
+  // Time chart
+  const byDay = {};
+  txs.forEach(t => { byDay[t.date] = (byDay[t.date]||0)+t.amount; });
+  const days = Object.keys(byDay).sort();
+  if (timeChartInst) timeChartInst.destroy();
+  timeChartInst = new Chart(document.getElementById('timeChart'), {
+    type: 'bar',
+    data: {
+      labels: days.map(d => d.slice(8)),
+      datasets: [{ data: days.map(d=>byDay[d]), backgroundColor: 'rgba(108,99,255,0.6)', borderRadius:4, borderSkipped:false }]
+    },
+    options: { plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{display:false} }, y:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{color:'rgba(42,42,56,0.8)'} } }, responsive:true, maintainAspectRatio:false }
+  });
+
+  // Top 10
+  const top10 = [...txs].sort((a,b)=>b.amount-a.amount).slice(0,10);
+  if (topChartInst) topChartInst.destroy();
+  topChartInst = new Chart(document.getElementById('topChart'), {
+    type: 'bar',
+    data: {
+      labels: top10.map(t => t.desc.length > 20 ? t.desc.slice(0,20)+'…' : t.desc),
+      datasets: [{ data: top10.map(t=>t.amount), backgroundColor: top10.map(t=>getCatColor(t.cat)), borderRadius:6, borderSkipped:false }]
+    },
+    options: { indexAxis:'y', plugins:{ legend:{display:false} }, scales:{ x:{ ticks:{color:'#5a5a72',font:{size:11}}, grid:{color:'rgba(42,42,56,0.8)'} }, y:{ ticks:{color:'#9090a8',font:{size:12}}, grid:{display:false} } }, responsive:true, maintainAspectRatio:false }
+  });
+
+  // Recommendations
+  renderRecommendations(txs, cats, total);
+}
+
+function renderRecommendations(txs, cats, total) {
+  const recos = [];
+  const numDays = txs.length > 0
+    ? Math.max(1, (new Date(txs.reduce((a,t)=>t.date>a?t.date:a,'')) - new Date(txs.reduce((a,t)=>t.date<a?t.date:a,'9999'))) / 86400000 + 1)
+    : 30;
+
+  // 1. מסעדות גבוהות
+  if (cats['מסעדות'] && cats['מסעדות'] > total * 0.12) {
+    recos.push({ icon:'🍽️', priority:'high', title:'הוצאות אוכל מחוץ לבית גבוהות', desc:`הוצאת ${fmtILS(cats['מסעדות'])} על מסעדות — ${(cats['מסעדות']/total*100).toFixed(0)}% מהסל. בישול בבית 3 פעמים בשבוע במקום לאכול בחוץ יכול לחסוך כ-30% מהסכום הזה.`, save: fmtILS(cats['מסעדות']*0.3) });
+  }
+
+  // 2. עסק שמופיע הרבה
+  const freqMap = {};
+  txs.forEach(t => { freqMap[t.desc] = (freqMap[t.desc]||0)+1; });
+  const freqEntries = Object.entries(freqMap).sort((a,b)=>b[1]-a[1]);
+  const freqTop = freqEntries[0];
+  if (freqTop && freqTop[1] >= 4) {
+    const ftxs = txs.filter(t=>t.desc===freqTop[0]);
+    const ftotal = ftxs.reduce((s,t)=>s+t.amount,0);
+    const avgTx = ftotal / ftxs.length;
+    recos.push({ icon:'🔄', priority:'medium', title:`"${freqTop[0]}" — ${freqTop[1]} ביקורים`, desc:`בילית ב"${freqTop[0]}" ${freqTop[1]} פעמים, בממוצע ${fmtILS(avgTx)} בכל ביקור. שקול להפחית לחצי מכאן — אפשר לחסוך בקלות.`, save: fmtILS(ftotal * 0.5) });
+  }
+
+  // 3. ריכוז קטגוריה
+  const topCatShare = Math.max(...Object.values(cats)) / total;
+  if (topCatShare > 0.35) {
+    const topCatName = Object.entries(cats).sort((a,b)=>b[1]-a[1])[0][0];
+    recos.push({ icon:'⚖️', priority:'medium', title:`ריכוז גבוה: ${topCatName}`, desc:`${(topCatShare*100).toFixed(0)}% מההוצאות שלך הולכות ל"${topCatName}". כדאי לפרק קטגוריה זו ולבחון היכן ניתן לדחוס.`, save: null });
+  }
+
+  // 4. הוצאות קטנות מצטברות (עסקאות מתחת ל-50 ש״ח)
+  const smallTxs = txs.filter(t => t.amount < 50);
+  const smallTotal = smallTxs.reduce((s,t)=>s+t.amount,0);
+  if (smallTxs.length >= 8 && smallTotal > total * 0.1) {
+    recos.push({ icon:'☕', priority:'low', title:`${smallTxs.length} עסקאות קטנות — מצטברות גדול`, desc:`יש לך ${smallTxs.length} עסקאות מתחת ל-₪50 שמסתכמות ב-${fmtILS(smallTotal)}. קפה, חטיף, משלוח — קטן קטן נהיה גדול. מעקב שבועי יעזור.`, save: fmtILS(smallTotal * 0.25) });
+  }
+
+  // 5. בידור/סטרימינג
+  const entTotal = (cats['בידור']||0);
+  if (entTotal > 200) {
+    recos.push({ icon:'📺', priority:'low', title:'מנויי בידור — שווה לבדוק', desc:`הוצאת ${fmtILS(entTotal)} על בידור. כדאי לבדוק אם כל המנויים (Netflix, Spotify, וכו׳) אכן בשימוש פעיל — ביטול אחד שווה לרוב ₪40–80 בחודש.`, save: fmtILS(Math.min(entTotal*0.4, 150)) });
+  }
+
+  // 6. חשבונות — האם יש מקום למשא ומתן?
+  const billsTotal = (cats['חשבונות']||0) + (cats['תקשורת']||0);
+  if (billsTotal > 500) {
+    recos.push({ icon:'📞', priority:'low', title:'חשבונות קבועים — ניתן לנהל משא ומתן', desc:`הוצאת ${fmtILS(billsTotal)} על חשבונות ותקשורת. חברות סלולר ואינטרנט לרוב מוכנות להציע הנחה בשיחת שימור — שווה 10 דקות של שיחה.`, save: fmtILS(billsTotal * 0.15) });
+  }
+
+  // 7. תחבורה
+  if (cats['תחבורה'] && cats['תחבורה'] > total * 0.15) {
+    recos.push({ icon:'🚗', priority:'medium', title:'הוצאות תחבורה גבוהות', desc:`${fmtILS(cats['תחבורה'])} על תחבורה (${(cats['תחבורה']/total*100).toFixed(0)}%). בדוק אם יש נסיעות שאפשר לאחד, לעבור לתחבורה ציבורית, או לדחוס תדלוקים לנקודות מבצע.`, save: fmtILS(cats['תחבורה'] * 0.2) });
+  }
+
+  // 8. ביגוד/קניות אימפולסיביות
+  if ((cats['ביגוד']||0) + (cats['קניות']||0) > total * 0.12) {
+    const shopTotal = (cats['ביגוד']||0) + (cats['קניות']||0);
+    recos.push({ icon:'🛍️', priority:'low', title:'קניות — כלל 24 השעות', desc:`הוצאת ${fmtILS(shopTotal)} על ביגוד וקניות. נסה את כלל 24 השעות: לפני כל קנייה מעל ₪100, המתן יום שלם. חוסך הרבה רכישות אימפולסיביות.`, save: fmtILS(shopTotal * 0.2) });
+  }
+
+  // 9. ממוצע יומי גבוה
+  const dailyAvg = total / numDays;
+  if (dailyAvg > 300) {
+    recos.push({ icon:'📅', priority:'medium', title:`ממוצע יומי גבוה: ${fmtILS(dailyAvg)}`, desc:`אתה מוציא בממוצע ${fmtILS(dailyAvg)} ביום. קביעת תקציב יומי יעזור — לדוגמה יעד של ${fmtILS(dailyAvg*0.8)} ביום חוסך ${fmtILS(dailyAvg*0.2*30)} בחודש.`, save: fmtILS(dailyAvg * 0.2 * 30) });
+  }
+
+  // 10. הכי הרבה עסקאות בסוג אחד
+  const catCounts = {};
+  txs.forEach(t => { catCounts[t.cat] = (catCounts[t.cat]||0)+1; });
+  const topCountCat = Object.entries(catCounts).sort((a,b)=>b[1]-a[1])[0];
+  if (topCountCat && topCountCat[1] > 12 && topCountCat[0] !== (Object.entries(cats).sort((a,b)=>b[1]-a[1])[0]||[''])[0]) {
+    recos.push({ icon:'🔢', priority:'low', title:`${topCountCat[1]} עסקאות ב"${topCountCat[0]}"`, desc:`יש לך ${topCountCat[1]} עסקאות נפרדות בקטגוריית "${topCountCat[0]}". מספר גבוה של עסקאות קטנות עלול להסתיר הוצאה כוללת משמעותית.`, save: null });
+  }
+
+  // Default fallback
+  if (recos.length === 0) {
+    recos.push({ icon:'✅', priority:'low', title:'הוצאות נראות מאוזנות', desc:'לא זיהיתי דגלים אדומים ברורים בנתונים. המשך לעקוב מדי חודש — ניתוח עקבי הוא המפתח לחיסכון לאורך זמן.', save: null });
+  }
+
+  const priorityOrder = { high: 0, medium: 1, low: 2 };
+  recos.sort((a,b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+
+  const priorityColors = { high: '#ff4d6d', medium: '#ffa552', low: '#69db7c' };
+  const priorityLabels = { high: '⚠️ גבוה', medium: '⚡ בינוני', low: '💡 נמוך' };
+
+  document.getElementById('recoList').innerHTML = recos.map(r => `
+    <div class="reco-item">
+      <div class="reco-icon">${r.icon}</div>
+      <div class="reco-body" style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+          <div class="reco-title" style="margin:0">${r.title}</div>
+          <span style="font-size:10px;padding:2px 7px;border-radius:10px;background:${priorityColors[r.priority]}22;color:${priorityColors[r.priority]};border:1px solid ${priorityColors[r.priority]}44;font-weight:700;white-space:nowrap">${priorityLabels[r.priority]}</span>
+        </div>
+        <div class="reco-desc">${r.desc}</div>
+        ${r.save ? `<div class="reco-save">💰 פוטנציאל חיסכון: ${r.save} / חודש</div>` : ''}
+      </div>
+    </div>
+  `).join('');
+
+  // Total savings potential
+  const savingsNums = recos.filter(r=>r.save).map(r=>parseInt(r.save.replace(/[^\d]/g,'')));
+  if (savingsNums.length > 1) {
+    const totalSavings = savingsNums.reduce((a,b)=>a+b,0);
+    document.getElementById('recoList').innerHTML += `
+      <div style="margin-top:12px;padding:14px 18px;background:rgba(67,233,123,0.08);border:1px solid rgba(67,233,123,0.25);border-radius:12px;display:flex;align-items:center;justify-content:space-between">
+        <span style="font-size:14px;font-weight:700;color:var(--accent3)">סה"כ פוטנציאל חיסכון</span>
+        <span style="font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--accent3)">₪${totalSavings.toLocaleString()}/חודש</span>
+      </div>`;
   }
 }
-// (rotation started after fetchHebcal resolves — see above)
+
+// ─── TRANSACTIONS ─────────────────────────────────────────────────────────────
+function renderTransactions() {
+  if (!state.transactions.length) {
+    document.getElementById('txEmpty').style.display = 'block';
+    document.getElementById('txContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('txEmpty').style.display = 'none';
+  document.getElementById('txContent').style.display = 'block';
+  const cats = [...new Set(state.transactions.map(t=>t.cat))].sort();
+  const catFilter = document.getElementById('catFilter');
+  catFilter.innerHTML = '<option value="">כל הקטגוריות</option>' + cats.map(c=>`<option value="${c}">${c}</option>`).join('');
+  filterTx();
+}
+
+function filterTx() {
+  const search = document.getElementById('txSearch').value.toLowerCase();
+  const cat = document.getElementById('catFilter').value;
+  let txs = state.transactions.filter(t => {
+    const matchSearch = !search || t.desc.toLowerCase().includes(search) || t.cat.toLowerCase().includes(search);
+    const matchCat = !cat || t.cat === cat;
+    return matchSearch && matchCat;
+  });
+  txs.sort((a,b) => b.date.localeCompare(a.date));
+
+  const filtTotal = txs.reduce((s,t) => s+t.amount, 0);
+  const avg = txs.length ? filtTotal / txs.length : 0;
+  const catLabel = cat ? `קטגוריה: ${cat}` : 'כל הקטגוריות';
+
+  document.getElementById('txCountBadge').textContent = `(${txs.length})`;
+  document.getElementById('txTable').innerHTML = txs.map(t => {
+    const col = getCatColor(t.cat);
+    const tid = String(t.id).replace(/[^a-zA-Z0-9_]/g,'_');
+    return `<tr id="txrow_${tid}">
+      <td style="color:var(--text2);font-size:12px;white-space:nowrap">${formatDateHe(t.date)}</td>
+      <td style="font-weight:500">${t.desc}</td>
+      <td>
+        <span class="cat-badge" title="לחץ לשינוי קטגוריה"
+          style="background:${col}22;color:${col};border:1px solid ${col}44;cursor:pointer"
+          onclick='openCatEdit(${JSON.stringify(t.id)}, ${JSON.stringify(t.cat)}, ${JSON.stringify(t.desc)})'>${t.cat} ✎</span>
+      </td>
+      <td class="amount-col">
+        <span id="amt_disp_${tid}" class="amount-neg" style="cursor:pointer" title="לחץ לעריכה"
+          onclick="startEditAmount('${tid}', ${t.amount}, ${JSON.stringify(t.id)})">${fmtILS(t.amount)}</span>
+        <span id="amt_edit_${tid}" style="display:none">
+          <input type="number" step="0.01" min="0" value="${t.amount}"
+            style="width:80px;background:var(--surface2);border:1px solid var(--accent);color:var(--text);padding:3px 7px;border-radius:6px;font-size:13px;font-family:'Space Mono',monospace;outline:none"
+            onkeydown="if(event.key==='Enter')saveEditAmount('${tid}',${JSON.stringify(t.id)},this.value);if(event.key==='Escape')cancelEditAmount('${tid}',${t.amount})">
+          <button onclick="saveEditAmount('${tid}',${JSON.stringify(t.id)},document.querySelector('#amt_edit_${tid} input').value)"
+            style="background:var(--accent3);color:#000;border:none;border-radius:5px;padding:3px 8px;cursor:pointer;font-size:11px;font-weight:700">✓</button>
+          <button onclick="cancelEditAmount('${tid}',${t.amount})"
+            style="background:transparent;color:var(--text3);border:none;cursor:pointer;font-size:12px;padding:2px 4px">✕</button>
+        </span>
+      </td>
+      <td style="text-align:center">
+        <button onclick="deleteTx(${JSON.stringify(t.id)})" title="מחק עסקה"
+          style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px;transition:color 0.2s"
+          onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('txFoot').innerHTML = txs.length ? `
+    <tr>
+      <td colspan="2" class="foot-label">
+        סיכום — ${catLabel} &nbsp;·&nbsp; ${txs.length} עסקאות &nbsp;·&nbsp; ממוצע: ${fmtILS(avg)}
+      </td>
+      <td></td>
+      <td class="foot-total">${fmtILS(filtTotal)}</td>
+      <td></td>
+    </tr>` : '';
+}
+
+// ─── QUICK ADD TX FROM TRANSACTIONS PANEL ────────────────────────────────────
+function addQuickTx() {
+  const date   = document.getElementById('txQuickDate').value;
+  const desc   = document.getElementById('txQuickDesc').value.trim();
+  const amount = parseFloat(document.getElementById('txQuickAmount').value);
+  const cat    = document.getElementById('txQuickCat').value;
+  if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
+  const monthKey = date.substring(0,7);
+  if (!state.months[monthKey]) state.months[monthKey] = [];
+  state.months[monthKey].push({ id: Date.now(), date, desc, amount, cat });
+  rebuildAllTransactions();
+  saveState();
+  document.getElementById('txQuickDesc').value   = '';
+  document.getElementById('txQuickAmount').value = '';
+  filterTx();
+  showToast(`✅ הוספה: ${desc} — ${fmtILS(amount)}`);
+}
+
+// ─── INLINE AMOUNT EDITING ────────────────────────────────────────────────────
+function startEditAmount(tid, currentAmount, txId) {
+  document.getElementById('amt_disp_' + tid).style.display = 'none';
+  document.getElementById('amt_edit_' + tid).style.display = 'inline-flex';
+  const inp = document.querySelector('#amt_edit_' + tid + ' input');
+  if (inp) { inp.focus(); inp.select(); }
+}
+
+function saveEditAmount(tid, txId, newVal) {
+  const amount = parseFloat(newVal);
+  if (!amount || amount <= 0) { showToast('⚠️ סכום לא תקין'); return; }
+  for (const m of Object.keys(state.months)) {
+    const tx = state.months[m].find(t => String(t.id) === String(txId));
+    if (tx) { tx.amount = amount; break; }
+  }
+  rebuildAllTransactions();
+  saveState();
+  filterTx();
+  showToast(`✅ סכום עודכן → ${fmtILS(amount)}`);
+}
+
+function cancelEditAmount(tid, originalAmount) {
+  document.getElementById('amt_disp_' + tid).style.display = 'inline';
+  document.getElementById('amt_edit_' + tid).style.display = 'none';
+}
+
+// ─── CATEGORY EDIT & DELETE ───────────────────────────────────────────────────
+const ALL_CATS = ['מזון','מסעדות','תחבורה','בריאות','בידור','חשבונות','ביגוד','חינוך','תקשורת','ביטוח','ספורט','קניות','כללי','אחר'];
+
+function openCatEdit(txId, currentCat, desc) {
+  // Remove any existing popup
+  const old = document.getElementById('catPopup');
+  if (old) old.remove();
+
+  const existingCats = [...new Set([...ALL_CATS, ...state.allTransactions.map(t=>t.cat)])].sort();
+
+  const chips = existingCats.map(c => {
+    const col = getCatColor(c);
+    const sel = c === currentCat ? 'selected' : '';
+    return `<span class="cat-chip ${sel}" style="background:${col}33;color:${col};border-color:${c===currentCat?col:'transparent'}"
+      onclick="document.querySelectorAll('.cat-chip').forEach(x=>x.classList.remove('selected'));this.classList.add('selected');document.getElementById('catCustom').value=''"
+    >${c}</span>`;
+  }).join('');
+
+  const popup = document.createElement('div');
+  popup.className = 'cat-popup';
+  popup.id = 'catPopup';
+  popup.innerHTML = `
+    <div class="cat-popup-box">
+      <div class="cat-popup-title">שינוי קטגוריה</div>
+      <div class="cat-popup-sub">${desc}</div>
+      <div class="cat-chips">${chips}</div>
+      <div class="cat-custom-row">
+        <input class="cat-custom-input" id="catCustom" placeholder="קטגוריה חדשה..." oninput="document.querySelectorAll('.cat-chip').forEach(x=>x.classList.remove('selected'))">
+      </div>
+      <div class="popup-actions">
+        <button class="btn btn-outline btn-sm" onclick="closeCatPopup()">ביטול</button>
+        <button class="btn btn-primary btn-sm" onclick="saveCatEdit(${JSON.stringify(txId)})">✓ שמור</button>
+      </div>
+    </div>`;
+  popup.addEventListener('click', e => { if (e.target === popup) closeCatPopup(); });
+  document.body.appendChild(popup);
+}
+
+function closeCatPopup() {
+  const p = document.getElementById('catPopup');
+  if (p) p.remove();
+}
+
+function saveCatEdit(txId) {
+  const custom = document.getElementById('catCustom').value.trim();
+  const selected = document.querySelector('.cat-chip.selected');
+  const newCat = custom || (selected ? selected.textContent : null);
+  if (!newCat) { showToast('⚠️ בחר קטגוריה'); return; }
+
+  // Update in all months
+  for (const m of Object.keys(state.months)) {
+    const tx = state.months[m].find(t => t.id === txId);
+    if (tx) { tx.cat = newCat; break; }
+  }
+  rebuildAllTransactions();
+  saveState();
+  closeCatPopup();
+  filterTx();
+  showToast(`✅ קטגוריה עודכנה → ${newCat}`);
+}
+
+function deleteTx(txId) {
+  // Find the tx for the confirmation message
+  let txDesc = 'עסקה זו';
+  for (const m of Object.keys(state.months)) {
+    const tx = state.months[m].find(t => t.id === txId);
+    if (tx) { txDesc = `"${tx.desc}" — ${fmtILS(tx.amount)}`; break; }
+  }
+  if (!confirm(`למחוק את ${txDesc}?`)) return;
+
+  for (const m of Object.keys(state.months)) {
+    const idx = state.months[m].findIndex(t => t.id === txId);
+    if (idx !== -1) {
+      state.months[m].splice(idx, 1);
+      if (state.months[m].length === 0) delete state.months[m];
+      break;
+    }
+  }
+  rebuildAllTransactions();
+  saveState();
+  filterTx();
+  showToast('🗑️ עסקה נמחקה');
+}
+
+// ─── HISTORY ──────────────────────────────────────────────────────────────────
+function renderHistory() {
+  const months = Object.keys(state.months).sort();
+  if (months.length < 2) {
+    document.getElementById('historyBars').innerHTML = '<div class="empty-state" style="padding:20px"><p>ייבא נתונים ממספר חודשים כדי לראות השוואה.</p></div>';
+    document.getElementById('monthManage').innerHTML = months.length ? months.map(m=>`<div class="month-row"><span class="month-name">${formatMonthHe(m)}</span><span class="month-amount">${fmtILS(state.months[m].reduce((s,t)=>s+t.amount,0))}</span><button class="btn btn-danger btn-sm" onclick="deleteMonth('${m}')">מחק</button></div>`).join('') : '<p class="text-muted">אין חודשים</p>';
+    return;
+  }
+
+  const totals = months.map(m => ({ m, total: state.months[m].reduce((s,t)=>s+t.amount,0) }));
+  const maxT = Math.max(...totals.map(t=>t.total));
+
+  document.getElementById('historyBars').innerHTML = totals.map((t,i) => {
+    const prev = i > 0 ? totals[i-1].total : null;
+    const diff = prev ? ((t.total - prev) / prev * 100).toFixed(1) : null;
+    const diffEl = diff ? `<span class="${parseFloat(diff)>0?'diff-up':'diff-down'}">${parseFloat(diff)>0?'▲':'▼'}${Math.abs(diff)}%</span>` : '<span></span>';
+    return `<div class="month-row">
+      <span class="month-name">${formatMonthHe(t.m)}</span>
+      <div class="month-bar-wrap"><div class="month-bar" style="width:${(t.total/maxT*100).toFixed(0)}%;background:${t.m===state.currentMonth?'var(--accent)':'var(--text3)'}"></div></div>
+      <span class="month-amount">${fmtILS(t.total)}</span>
+      ${diffEl}
+    </div>`;
+  }).join('');
+
+  document.getElementById('monthManage').innerHTML = months.map(m=>`
+    <div class="month-row">
+      <span class="month-name">${formatMonthHe(m)}</span>
+      <span class="text-muted">${state.months[m].length} עסקאות</span>
+      <button class="btn btn-outline btn-sm" onclick="selectMonth('${m}');showTab('dashboard')">צפה</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteMonth('${m}')">מחק</button>
+    </div>
+  `).join('');
+}
+
+function deleteMonth(m) {
+  if (!confirm(`למחוק את ${formatMonthHe(m)}?`)) return;
+  delete state.months[m];
+  rebuildAllTransactions();
+  saveState();
+  renderHistory();
+  renderMonthSummary();
+  showToast(`🗑️ ${formatMonthHe(m)} נמחק`);
+}
+
+function clearAll() {
+  if (!confirm('למחוק את כל הנתונים?')) return;
+  state.months = {};
+  state.files = [];
+  state.transactions = [];
+  state.allTransactions = [];
+  state.currentMonth = null;
+  state.dateRange = { from: null, to: null };
+  document.getElementById('rangeFrom').value = '';
+  document.getElementById('rangeTo').value = '';
+  document.getElementById('rangeBadge').style.display = 'none';
+  saveState();
+  renderMonthSummary();
+  renderFileRegistry();
+  renderHistory();
+  showToast('🗑️ כל הנתונים נמחקו');
+}
+
+function exportAllData() {
+  const blob = new Blob([JSON.stringify(state.months, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'finish-data.json'; a.click();
+}
+
+// ─── MANUAL ENTRY ─────────────────────────────────────────────────────────────
+function addManual() {
+  const date = document.getElementById('mDate').value;
+  const desc = document.getElementById('mDesc').value.trim();
+  const amount = parseFloat(document.getElementById('mAmount').value);
+  const cat = document.getElementById('mCat').value;
+
+  if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
+
+  const monthKey = date.substring(0,7);
+  if (!state.months[monthKey]) state.months[monthKey] = [];
+  const tx = { id: Date.now(), date, desc, amount, cat };
+  state.months[monthKey].push(tx);
+
+  rebuildAllTransactions();
+  saveState();
+  renderMonthSummary();
+  document.getElementById('mDesc').value = '';
+  document.getElementById('mAmount').value = '';
+  showToast(`✅ הוספה: ${desc} — ${fmtILS(amount)}`);
+}
+
+// ─── AI CHAT ─────────────────────────────────────────────────────────────────
+// ─── AI MULTI-PROVIDER ────────────────────────────────────────────────────────
+function getProviderModel() {
+  const val = document.getElementById('aiProviderSelect')?.value || 'anthropic|claude-sonnet-4-20250514';
+  const [provider, model] = val.split('|');
+  return { provider, model };
+}
+
+function onProviderChange() {
+  const { provider, model } = getProviderModel();
+  const isFree = model.includes(':free') || provider === 'gemini';
+  document.getElementById('freeNote').style.display = isFree ? 'inline' : 'none';
+  const labels = { anthropic:'Anthropic', gemini:'Google Gemini', openai:'OpenAI', openrouter:'OpenRouter' };
+  document.getElementById('aiModelBadge').textContent = labels[provider] || provider;
+
+  const badge = document.getElementById('apiKeyBadge');
+  const key = localStorage.getItem('hachama_key_' + provider) || '';
+  state.apiKey = key;
+
+  if (key) {
+    badge.textContent = `🔑 ${labels[provider]} Key ✓  (לחץ לשינוי)`;
+    badge.style.background = 'rgba(67,233,123,0.1)';
+    badge.style.borderColor = 'rgba(67,233,123,0.4)';
+    badge.style.color = 'var(--accent3)';
+    badge.onmouseover = () => badge.style.background = 'rgba(67,233,123,0.2)';
+    badge.onmouseout  = () => badge.style.background = 'rgba(67,233,123,0.1)';
+  } else {
+    badge.textContent = `🔑 הגדר ${labels[provider]} API Key`;
+    badge.style.background = 'rgba(255,101,132,0.12)';
+    badge.style.borderColor = 'rgba(255,101,132,0.4)';
+    badge.style.color = 'var(--accent2)';
+    badge.onmouseover = () => badge.style.background = 'rgba(255,101,132,0.22)';
+    badge.onmouseout  = () => badge.style.background = 'rgba(255,101,132,0.12)';
+  }
+}
+
+function setApiKey() {
+  const { provider } = getProviderModel();
+  const labels = { anthropic:'Anthropic', gemini:'Google AI Studio', openai:'OpenAI', openrouter:'OpenRouter' };
+  const hints = {
+    gemini: '\n\n💡 Google AI Studio: https://aistudio.google.com\nיש שכבה חינמית נדיבה!',
+    openrouter: '\n\n💡 OpenRouter: https://openrouter.ai\nמודלי :free זמינים בחינם!',
+    anthropic: '\n\n💡 console.anthropic.com',
+    openai: '\n\n💡 platform.openai.com'
+  };
+  const storageKey = 'hachama_key_' + provider;
+  const cur = localStorage.getItem(storageKey) || '';
+  const k = prompt(`הכנס ${labels[provider]} API Key:${hints[provider]||''}`, cur);
+  if (k !== null) {
+    const trimmed = k.trim();
+    if (trimmed) localStorage.setItem(storageKey, trimmed);
+    else localStorage.removeItem(storageKey);
+    state.apiKey = trimmed;
+    onProviderChange();
+    showToast(trimmed ? `✅ ${labels[provider]} Key נשמר` : '⚠️ Key הוסר');
+  }
+}
+
+// init provider display
+setTimeout(() => { onProviderChange(); }, 50);
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  const { provider, model } = getProviderModel();
+  const storageKey = 'hachama_key_' + provider;
+  const apiKey = localStorage.getItem(storageKey) || '';
+  if (!apiKey) { showToast('⚠️ נא להגדיר API Key תחילה'); setApiKey(); return; }
+
+  input.value = '';
+  addMessage(msg, 'user');
+  const thinking = addMessage('חושב...', 'thinking');
+  document.getElementById('sendBtn').disabled = true;
+
+  const systemPrompt = `אתה מנתח הוצאות פיננסי חכם שעוזר למשתמש להבין את ההוצאות שלו.
+תענה בעברית בלבד, בצורה ידידותית ומקצועית.
+אם המשתמש מבקש ניתוח כללי — תן סיכום קצר, זהה דפוסים מעניינים, ושאל שאלות ממוקדות על עסקאות לא ברורות.
+תן המלצות ספציפיות וממשיות לחיסכון.
+
+נתוני המשתמש:
+${buildDataContext()}`;
+
+  state.chatHistory.push({ role: 'user', content: msg });
+
+  try {
+    let reply = '';
+
+    if (provider === 'anthropic') {
+      const res = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type':'application/json', 'x-api-key':apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+        body: JSON.stringify({ model, max_tokens:1000, system:systemPrompt, messages:state.chatHistory })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      reply = data.content[0].text;
+
+    } else if (provider === 'gemini') {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const history = state.chatHistory.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }]
+      }));
+      const contents = [
+        { role:'user', parts:[{text: systemPrompt + '\n\nהשב: "הבנתי, אני מוכן לעזור."'}] },
+        { role:'model', parts:[{text:'הבנתי, אני מוכן לעזור.'}] },
+        ...history
+      ];
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ contents, generationConfig:{ maxOutputTokens:1000 } })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      reply = data.candidates[0].content.parts[0].text;
+
+    } else if (provider === 'openai') {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+        body: JSON.stringify({ model, max_tokens:1000, messages:[{role:'system',content:systemPrompt},...state.chatHistory] })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+      reply = data.choices[0].message.content;
+
+    } else if (provider === 'openrouter') {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey,'HTTP-Referer':'https://expense-tracker.local'},
+        body: JSON.stringify({ model, max_tokens:1000, messages:[{role:'system',content:systemPrompt},...state.chatHistory] })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      reply = data.choices[0].message.content;
+    }
+
+    thinking.remove();
+    addMessage(reply, 'ai');
+    state.chatHistory.push({ role: 'assistant', content: reply });
+    if (state.chatHistory.length > 20) state.chatHistory = state.chatHistory.slice(-20);
+
+  } catch(e) {
+    thinking.remove();
+    addMessage(`❌ שגיאה: ${e.message}\n\nוודא שה-API Key נכון ויש גישה לשירות.`, 'ai');
+  }
+
+  document.getElementById('sendBtn').disabled = false;
+}
+
+function buildDataContext() {
+  if (!state.transactions.length) return 'אין נתוני הוצאות כרגע.';
+  const txs = state.transactions;
+  const total = txs.reduce((s,t)=>s+t.amount,0);
+  const cats = {};
+  txs.forEach(t => { cats[t.cat] = (cats[t.cat]||0)+t.amount; });
+  const top5 = [...txs].sort((a,b)=>b.amount-a.amount).slice(0,5);
+
+  const from = state.dateRange.from;
+  const to = state.dateRange.to;
+  let rangeDesc = from && to ? `${formatDateHe(from)} עד ${formatDateHe(to)}` : 'כל הנתונים';
+
+  // Prev period comparison
+  let histCtx = '';
+  if (from && to) {
+    const rangeMs = new Date(to) - new Date(from);
+    const prevTo = new Date(new Date(from) - 1).toISOString().split('T')[0];
+    const prevFrom = new Date(new Date(from) - rangeMs - 86400000).toISOString().split('T')[0];
+    const prevTxs = state.allTransactions.filter(t => t.date >= prevFrom && t.date <= prevTo);
+    if (prevTxs.length) {
+      const prevTotal = prevTxs.reduce((s,t)=>s+t.amount,0);
+      const prevCats = {};
+      prevTxs.forEach(t => { prevCats[t.cat] = (prevCats[t.cat]||0)+t.amount; });
+      const diff = ((total - prevTotal)/prevTotal*100).toFixed(1);
+      histCtx = `\n\nהשוואה לתקופה קודמת (${formatDateHe(prevFrom)}–${formatDateHe(prevTo)}):
+סה"כ: ₪${prevTotal.toFixed(2)} (שינוי: ${diff}%)
+קטגוריות: ${Object.entries(prevCats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}: ₪${v.toFixed(2)}`).join(', ')}`;
+    }
+  }
+
+  return `נתוני הוצאות לתקופה: ${rangeDesc}
+סה"כ הוצאות: ₪${total.toFixed(2)}
+מספר עסקאות: ${txs.length}
+הוצאות לפי קטגוריה: ${Object.entries(cats).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`${k}: ₪${v.toFixed(2)}`).join(', ')}
+5 ההוצאות הגדולות: ${top5.map(t=>`${t.desc} (${t.cat}): ₪${t.amount.toFixed(2)} — ${t.date}`).join(' | ')}${histCtx}
+
+כל העסקאות (מקסימום 80):
+${txs.slice(0,80).map(t=>`${t.date} | ${t.desc} | ${t.cat} | ₪${t.amount.toFixed(2)}`).join('\n')}`;
+}
+
+function sendQuick(el) {
+  document.getElementById('chatInput').value = el.textContent;
+  sendChat();
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
+
+function addMessage(text, type) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `msg msg-${type}`;
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+// ─── INCOME ──────────────────────────────────────────────────────────────────
+let incSourceChartInst, incVsExpChartInst;
+
+function addIncome() {
+  const date   = document.getElementById('incDate').value;
+  const desc   = document.getElementById('incDesc').value.trim();
+  const amount = parseFloat(document.getElementById('incAmount').value);
+  const cat    = document.getElementById('incCat').value;
+  if (!date || !desc || !amount || amount <= 0) { showToast('⚠️ נא למלא את כל השדות'); return; }
+  // Use string id to avoid floating point issues
+  state.incomes.push({ id: 'inc_' + Date.now(), date, desc, amount, cat });
+  saveState();
+  document.getElementById('incDesc').value = '';
+  document.getElementById('incAmount').value = '';
+  renderIncome();
+  showToast(`✅ הכנסה נוספה: ${desc} — ${fmtILS(amount)}`);
+}
+
+function deleteIncome(id) {
+  const inc = state.incomes.find(i => String(i.id) === String(id));
+  if (!inc) return;
+  if (!confirm(`למחוק "${inc.desc}" — ${fmtILS(inc.amount)}?`)) return;
+  state.incomes = state.incomes.filter(i => String(i.id) !== String(id));
+  saveState();
+  renderIncome();
+  showToast('🗑️ הכנסה נמחקה');
+}
+
+function renderIncome() {
+  // Show ALL incomes (not filtered by dateRange — income tab is independent)
+  const incs = [...state.incomes].sort((a,b) => b.date.localeCompare(a.date));
+
+  const totalInc = incs.reduce((s,i) => s+i.amount, 0);
+  const totalExp = state.transactions.reduce((s,t) => s+t.amount, 0);
+  const balance  = totalInc - totalExp;
+  const savePct  = totalInc > 0 ? (balance / totalInc * 100).toFixed(1) : 0;
+
+  // Stats
+  const statsEl = document.getElementById('incStatsGrid');
+  if (incs.length === 0) {
+    statsEl.innerHTML = '<div class="empty-state" style="padding:20px;grid-column:1/-1"><p>הוסף הכנסות כדי לראות סיכום.</p></div>';
+    document.getElementById('incChartsGrid').style.display = 'none';
+    document.getElementById('incTableWrap').style.display  = 'none';
+    return;
+  }
+  statsEl.innerHTML = `
+    <div class="stat-card c3"><div class="stat-label">סה"כ הכנסות</div><div class="stat-value c3">${fmtILS(totalInc)}</div><div class="stat-sub">${incs.length} רשומות</div></div>
+    <div class="stat-card c2"><div class="stat-label">סה"כ הוצאות</div><div class="stat-value c2">${fmtILS(totalExp)}</div></div>
+    <div class="stat-card ${balance>=0?'c3':'c2'}"><div class="stat-label">מאזן</div><div class="stat-value ${balance>=0?'c3':'c2'}">${fmtILS(balance)}</div><div class="stat-sub">${savePct}% חיסכון</div></div>
+    <div class="stat-card c1"><div class="stat-label">שיעור חיסכון</div><div class="stat-value c1" style="font-size:22px">${savePct}%</div><div class="stat-sub">מההכנסות</div></div>
+  `;
+
+  document.getElementById('incChartsGrid').style.display = '';
+  document.getElementById('incTableWrap').style.display  = '';
+  document.getElementById('incCountBadge').textContent   = `(${incs.length})`;
+
+  // Source donut
+  const byCat = {};
+  incs.forEach(i => { byCat[i.cat] = (byCat[i.cat]||0) + i.amount; });
+  const catEntries = Object.entries(byCat).sort((a,b) => b[1]-a[1]);
+  if (incSourceChartInst) incSourceChartInst.destroy();
+  incSourceChartInst = new Chart(document.getElementById('incSourceChart'), {
+    type: 'doughnut',
+    data: {
+      labels: catEntries.map(e=>e[0]),
+      datasets: [{ data: catEntries.map(e=>e[1]),
+        backgroundColor: catEntries.map(e => INC_COLORS[e[0]]||'#74c0fc'),
+        borderColor: '#0a0a0f', borderWidth: 3, hoverOffset: 8 }]
+    },
+    options: {
+      plugins: { legend: { position:'right', labels:{ color:'#e8e8f0', font:{size:12}, boxWidth:12 } },
+        tooltip: { callbacks: { label: ctx => ` ${ctx.label}: ${fmtILS(ctx.raw)}` } } },
+      cutout: '60%', responsive: true, maintainAspectRatio: false
+    }
+  });
+
+  // Inc vs Exp bar by month
+  const allMonths = [...new Set([
+    ...state.incomes.map(i => i.date.substring(0,7)),
+    ...state.allTransactions.map(t => t.date.substring(0,7))
+  ])].sort().slice(-6);
+  const incByMonth = {}, expByMonth = {};
+  allMonths.forEach(m => {
+    incByMonth[m] = state.incomes.filter(i => i.date.startsWith(m)).reduce((s,i)=>s+i.amount,0);
+    expByMonth[m] = (state.months[m]||[]).reduce((s,t)=>s+t.amount,0);
+  });
+  if (incVsExpChartInst) incVsExpChartInst.destroy();
+  incVsExpChartInst = new Chart(document.getElementById('incVsExpChart'), {
+    type: 'bar',
+    data: {
+      labels: allMonths.map(m => formatMonthHe(m).split(' ')[0]),
+      datasets: [
+        { label: 'הכנסות', data: allMonths.map(m=>incByMonth[m]||0), backgroundColor: 'rgba(34,197,94,0.7)', borderRadius:4 },
+        { label: 'הוצאות', data: allMonths.map(m=>expByMonth[m]||0), backgroundColor: 'rgba(255,77,109,0.7)', borderRadius:4 }
+      ]
+    },
+    options: {
+      plugins: { legend: { labels: { color:'#e8e8f0', font:{size:11} } } },
+      scales: { x:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{display:false} }, y:{ ticks:{color:'#5a5a72',font:{size:10}}, grid:{color:'rgba(42,42,56,0.8)'} } },
+      responsive: true, maintainAspectRatio: false
+    }
+  });
+
+  // Table — sorted newest first (already sorted in incs)
+  document.getElementById('incTable').innerHTML = incs.map(i => {
+    const col = INC_COLORS[i.cat] || '#74c0fc';
+    const safeId = JSON.stringify(String(i.id));
+    return `<tr>
+      <td style="color:var(--text);font-size:13px;font-weight:500;white-space:nowrap">${formatDateHe(i.date)}</td>
+      <td style="font-weight:500">${i.desc}</td>
+      <td><span class="inc-badge" style="background:${col}22;color:${col};border:1px solid ${col}44">${i.cat}</span></td>
+      <td class="amount-col" style="color:var(--inc-accent);font-family:'Space Mono',monospace;font-weight:700">${fmtILS(i.amount)}</td>
+      <td style="text-align:center">
+        <button onclick="deleteIncome(${safeId})" style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:14px;padding:4px 6px;border-radius:6px"
+          onmouseover="this.style.color='var(--accent2)'" onmouseout="this.style.color='var(--text3)'">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('incFoot').innerHTML = `
+    <tr>
+      <td colspan="3" class="foot-label">סה"כ הכנסות — ${incs.length} רשומות</td>
+      <td class="foot-total" style="color:var(--inc-accent)">${fmtILS(totalInc)}</td>
+      <td></td>
+    </tr>`;
+}
+
+// ─── BUDGET ───────────────────────────────────────────────────────────────────
+function renderBudget() {
+  const txs = state.transactions;
+  if (!txs.length) {
+    document.getElementById('budgetEmpty').style.display  = 'block';
+    document.getElementById('budgetContent').style.display = 'none';
+    return;
+  }
+  document.getElementById('budgetEmpty').style.display  = 'none';
+  document.getElementById('budgetContent').style.display = 'block';
+
+  // Build per-cat spend
+  const catSpend = {};
+  txs.forEach(t => { catSpend[t.cat] = (catSpend[t.cat]||0) + t.amount; });
+  const totalSpend = txs.reduce((s,t)=>s+t.amount,0);
+  const totalBudget = Object.values(state.budgets).reduce((s,v)=>s+(v||0),0);
+  const totalInc = state.incomes.filter(i => {
+    const from = state.dateRange.from, to = state.dateRange.to;
+    return (!from || i.date >= from) && (!to || i.date <= to);
+  }).reduce((s,i)=>s+i.amount, 0);
+
+  // Stats
+  const overBudget = Object.entries(catSpend).filter(([c,v]) => state.budgets[c] && v > state.budgets[c]).length;
+  document.getElementById('budgetStatsGrid').innerHTML = `
+    <div class="stat-card c1"><div class="stat-label">תקציב כולל</div><div class="stat-value c1">${fmtILS(totalBudget)}</div><div class="stat-sub">${Object.keys(state.budgets).length} קטגוריות</div></div>
+    <div class="stat-card c2"><div class="stat-label">הוצא בפועל</div><div class="stat-value c2">${fmtILS(totalSpend)}</div><div class="stat-sub">${totalBudget ? ((totalSpend/totalBudget)*100).toFixed(0)+'% מהתקציב' : ''}</div></div>
+    <div class="stat-card ${overBudget?'c2':'c3'}"><div class="stat-label">חריגות</div><div class="stat-value ${overBudget?'c2':'c3'}">${overBudget}</div><div class="stat-sub">קטגוריות מעל תקציב</div></div>
+    <div class="stat-card c4"><div class="stat-label">יתרה</div><div class="stat-value c4">${fmtILS(totalBudget - totalSpend)}</div><div class="stat-sub">נותר מהתקציב</div></div>
+  `;
+
+  // Smart suggestions
+  // Get historical avg from ALL months
+  const allCatSpend = {};
+  const monthCount = Object.keys(state.months).length || 1;
+  Object.values(state.months).flat().forEach(t => { allCatSpend[t.cat] = (allCatSpend[t.cat]||0) + t.amount; });
+  const suggestions = Object.entries(allCatSpend).map(([cat, total]) => {
+    const avg = total / monthCount;
+    const current = state.budgets[cat] || 0;
+    const suggested = Math.ceil(avg * 1.1 / 50) * 50; // round up to nearest 50, add 10% buffer
+    const reason = avg > 0
+      ? `ממוצע חודשי ${fmtILS(avg)} (${monthCount} חודשים)`
+      : 'קטגוריה חדשה';
+    return { cat, avg, suggested, current, reason };
+  }).sort((a,b) => b.avg - a.avg);
+
+  document.getElementById('budgetSuggestList').innerHTML = suggestions.slice(0, 8).map(s => `
+    <div class="suggest-row">
+      <div class="suggest-cat">${s.cat}</div>
+      <div class="suggest-reason">${s.reason}</div>
+      <div class="suggest-amount">${fmtILS(s.suggested)}</div>
+      <button class="btn btn-outline btn-sm" onclick="applyOneSuggestion('${s.cat}', ${s.suggested})">החל</button>
+    </div>
+  `).join('');
+
+  // Per-category rows
+  const cats = [...new Set([...Object.keys(catSpend), ...Object.keys(state.budgets)])].sort();
+  document.getElementById('budgetCatList').innerHTML = cats.map(cat => {
+    const spent   = catSpend[cat] || 0;
+    const budget  = state.budgets[cat] || 0;
+    const pct     = budget > 0 ? Math.min((spent / budget) * 100, 100) : 0;
+    const over    = budget > 0 && spent > budget;
+    const warn    = budget > 0 && spent / budget > 0.8;
+    const barColor = over ? 'var(--accent2)' : warn ? 'var(--accent4)' : 'var(--accent3)';
+    const pctClass = over ? 'over' : warn ? 'warn' : 'ok';
+    const col = getCatColor(cat);
+    return `<div class="budget-row">
+      <div class="budget-cat-name" style="color:${col}">${cat}</div>
+      <div style="font-size:12px;color:var(--text2);white-space:nowrap;min-width:70px">${fmtILS(spent)} הוצא</div>
+      <div class="budget-bar-wrap">
+        <div class="budget-bar-spent" style="width:${pct.toFixed(0)}%;background:${barColor}"></div>
+      </div>
+      <div class="budget-input-wrap">
+        <span style="font-size:12px;color:var(--text3)">₪</span>
+        <input class="budget-input" type="number" id="bud_${cat}" value="${budget||''}" placeholder="0" min="0" step="50"
+          oninput="previewBudget('${cat}', this.value)">
+      </div>
+      <div class="budget-pct ${pctClass}" id="budpct_${cat}">
+        ${budget > 0 ? `${(spent/budget*100).toFixed(0)}%` : '—'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function previewBudget(cat, val) {
+  const spent = state.transactions.filter(t=>t.cat===cat).reduce((s,t)=>s+t.amount,0);
+  const budget = parseFloat(val) || 0;
+  const pctEl = document.getElementById('budpct_' + cat);
+  if (!pctEl) return;
+  if (budget <= 0) { pctEl.textContent = '—'; pctEl.className = 'budget-pct'; return; }
+  const pct = (spent / budget * 100).toFixed(0);
+  pctEl.textContent = pct + '%';
+  pctEl.className = 'budget-pct ' + (spent > budget ? 'over' : spent/budget > 0.8 ? 'warn' : 'ok');
+}
+
+function saveBudgets() {
+  const cats = [...new Set([...Object.keys({}), ...document.querySelectorAll('[id^="bud_"]')].map(el => typeof el === 'string' ? el : el.id.replace('bud_','')))];
+  document.querySelectorAll('[id^="bud_"]').forEach(el => {
+    const cat = el.id.replace('bud_', '');
+    const val = parseFloat(el.value) || 0;
+    if (val > 0) state.budgets[cat] = val;
+    else delete state.budgets[cat];
+  });
+  saveState();
+  renderBudget();
+  showToast('✅ תקציב נשמר!');
+}
+
+function applyOneSuggestion(cat, amount) {
+  state.budgets[cat] = amount;
+  const input = document.getElementById('bud_' + cat);
+  if (input) { input.value = amount; previewBudget(cat, amount); }
+  showToast(`✅ תקציב ${cat}: ${fmtILS(amount)}`);
+}
+
+function applySuggestions() {
+  document.querySelectorAll('.suggest-amount').forEach((el, i) => {
+    const row  = el.closest('.suggest-row');
+    const cat  = row.querySelector('.suggest-cat').textContent;
+    const amt  = parseInt(el.textContent.replace(/[^\d]/g,''));
+    if (cat && amt) { state.budgets[cat] = amt; }
+  });
+  saveBudgets();
+  showToast('✅ כל ההצעות הוחלו!');
+}
+
+function resetBudgets() {
+  if (!confirm('לאפס את כל התקציבים?')) return;
+  state.budgets = {};
+  saveState();
+  renderBudget();
+  showToast('🔄 תקציבים אופסו');
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function fmtILS(n) { return '₪' + (n||0).toLocaleString('he-IL', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function formatMonthHe(m) {
+  if (!m) return '';
+  const [y, mo] = m.split('-');
+  const names = ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'];
+  return `${names[parseInt(mo)-1]} ${y}`;
+}
+function formatDateHe(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return `${day}/${m}/${y.slice(2)}`;
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.querySelector('.tab').classList.add('active');
+document.getElementById('mDate').value      = new Date().toISOString().split('T')[0];
+document.getElementById('incDate').value    = new Date().toISOString().split('T')[0];
+document.getElementById('txQuickDate').value = new Date().toISOString().split('T')[0];
+// Default range: last 30 days
+(function() {
+  const today = new Date();
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  document.getElementById('rangeFrom').value = monthAgo.toISOString().split('T')[0];
+  document.getElementById('rangeTo').value   = today.toISOString().split('T')[0];
+})();
+setTimeout(() => { onProviderChange(); }, 300);
+renderFileRegistry();
 </script>
 </body>
 </html>
