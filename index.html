@@ -77,14 +77,14 @@
   .side-panel{display:flex;flex-direction:column;overflow:hidden;}
   .panel-section{flex:1;border-bottom:1px solid rgba(200,164,74,.2);padding:10px 18px;display:flex;flex-direction:column;justify-content:center;}
   .panel-section:last-child{border-bottom:none;}
-  .section-title{font-size:clamp(.91rem,1.69vw,1.17rem);color:var(--gold);font-weight:700;letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
+  .section-title{font-size:clamp(.82rem,1.52vw,1.05rem);color:var(--gold);font-weight:700;letter-spacing:2px;margin-bottom:6px;display:flex;align-items:center;gap:8px;}
   .section-title::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,rgba(200,164,74,.5),transparent);}
 
   /* Prayer items — +30% font sizes */
   .prayer-item{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid rgba(200,164,74,.08);}
   .prayer-item:last-child{border-bottom:none;}
-  .prayer-name{font-size:clamp(1.37rem,2.73vw,1.69rem);color:var(--parchment);}
-  .prayer-time{font-size:clamp(1.63rem,3.25vw,2.15rem);font-weight:700;color:var(--text-bright);direction:ltr;}
+  .prayer-name{font-size:clamp(1.23rem,2.46vw,1.52rem);color:var(--parchment);}
+  .prayer-time{font-size:clamp(1.47rem,2.93vw,1.94rem);font-weight:700;color:var(--text-bright);direction:ltr;}
   .prayer-time.upcoming{color:var(--gold-light);text-shadow:0 0 10px rgba(232,200,122,.6);}
 
   /* Clock */
@@ -95,11 +95,11 @@
   #clock{font-size:clamp(4rem,10vw,8rem);font-weight:900;color:var(--text-bright);text-shadow:0 0 30px rgba(232,200,122,.5),0 2px 4px rgba(0,0,0,.8);letter-spacing:4px;line-height:1;direction:ltr;display:block;}
   .colon{animation:blink 1s infinite;color:var(--gold-light);}
   @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:.2}}
-  .day-name{font-size:clamp(1.3rem,3.25vw,1.95rem);color:var(--gold-light);font-weight:700;margin-top:8px;letter-spacing:2px;}
+  .day-name{font-size:clamp(1.17rem,2.93vw,1.76rem);color:var(--gold-light);font-weight:700;margin-top:8px;letter-spacing:2px;}
   .quick-zmanim{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%;padding:0 10px;}
   .quick-item{background:rgba(200,164,74,.1);border:1px solid rgba(200,164,74,.3);border-radius:10px;padding:8px 12px;text-align:center;}
-  .q-label{font-size:clamp(.78rem,1.56vw,1.04rem);color:var(--gold);display:block;margin-bottom:2px;}
-  .q-time{font-size:clamp(1.24rem,2.47vw,1.63rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
+  .q-label{font-size:clamp(.70rem,1.40vw,.94rem);color:var(--gold);display:block;margin-bottom:2px;}
+  .q-time{font-size:clamp(1.12rem,2.22vw,1.47rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
 
   /* Footer */
   .footer{background:linear-gradient(180deg,#1a0e05,#0d0703);border-top:3px solid var(--gold);flex-shrink:0;min-height:120px;position:relative;overflow:hidden;}
@@ -110,14 +110,14 @@
   .slide-label::before,.slide-label::after{content:'◆';font-size:.55rem;opacity:.7;}
   .footer-prayers{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;}
   .fp-card{background:rgba(200,164,74,.09);border:1px solid rgba(200,164,74,.35);border-radius:12px;padding:8px 22px;text-align:center;min-width:110px;}
-  .fp-name{font-size:clamp(1.04rem,1.82vw,1.24rem);color:var(--gold-light);display:block;margin-bottom:3px;}
-  .fp-time{font-size:clamp(1.69rem,3.38vw,2.47rem);font-weight:900;color:var(--text-bright);direction:ltr;display:block;}
+  .fp-name{font-size:clamp(.94rem,1.64vw,1.12rem);color:var(--gold-light);display:block;margin-bottom:3px;}
+  .fp-time{font-size:clamp(1.52rem,3.04vw,2.22rem);font-weight:900;color:var(--text-bright);direction:ltr;display:block;}
   .footer-zmanim{display:flex;gap:16px;flex-wrap:wrap;justify-content:center;}
   .fz-card{background:rgba(200,164,74,.08);border:1px solid rgba(200,164,74,.28);border-radius:10px;padding:7px 14px;text-align:center;min-width:90px;}
-  .fz-name{font-size:clamp(.85rem,1.43vw,1.04rem);color:var(--gold);display:block;margin-bottom:2px;}
-  .fz-time{font-size:clamp(1.17rem,2.34vw,1.63rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
+  .fz-name{font-size:clamp(.77rem,1.29vw,.94rem);color:var(--gold);display:block;margin-bottom:2px;}
+  .fz-time{font-size:clamp(1.05rem,2.11vw,1.47rem);font-weight:700;color:var(--text-bright);direction:ltr;display:block;}
   .footer-announcements{display:flex;flex-direction:column;gap:5px;overflow:hidden;max-height:90px;}
-  .ann-line{font-size:clamp(1.17rem,2.21vw,1.43rem);color:var(--parchment);padding-right:18px;position:relative;line-height:1.3;}
+  .ann-line{font-size:clamp(1.05rem,1.99vw,1.29rem);color:var(--parchment);padding-right:18px;position:relative;line-height:1.3;}
   .ann-line::before{content:'◈';position:absolute;right:0;color:var(--gold);font-size:.75rem;top:4px;}
   .slide-dots{position:absolute;bottom:6px;left:50%;transform:translateX(-50%);display:flex;gap:7px;}
   .dot{width:6px;height:6px;border-radius:50%;background:rgba(200,164,74,.25);transition:all .3s;}
@@ -270,7 +270,7 @@
     </div>
     <div class="parasha-badge">פרשת השבוע<strong id="parasha">טוען...</strong></div>
     <div class="today-info" id="todayInfo">
-      <!-- Filled by JS: holiday name + tachanun notice -->
+      <div class="today-next-holiday" style="opacity:.5;">טוען...</div>
     </div>
   </div>
 
@@ -564,6 +564,16 @@ function fmtISO(s) {
 }
 
 // Render the today-info panel in the header (top-left)
+function calcNoTachanun(todayItems, hd) {
+  // No tachanun on holidays, Rosh Chodesh, Chol Hamoed, special days
+  const noTachanunCats = ['holiday','roshchodesh','minor'];
+  if (todayItems.some(i => noTachanunCats.includes(i.category))) return true;
+  // Shabbat
+  const dow = new Date().getDay();
+  if (dow === 6) return true;
+  return false;
+}
+
 function renderTodayInfo(holidayItem, noTachanun, hd) {
   const el = document.getElementById('todayInfo');
   let html = '';
@@ -638,7 +648,6 @@ function refreshPrayers() {
   const cusCards=custom.map(p=>`<div class="fp-card"><span class="fp-name">${p.name||''}</span><span class="fp-time">${p.time||'--:--'}</span></div>`);
   document.getElementById('fp-container').innerHTML=[...stdCards,...cusCards].join('');
   buildScreenB(prayers,custom);
-  renderCustomPrayers();
 }
 
 function buildScreenB(prayers,custom=[]) {
@@ -729,19 +738,15 @@ function renderCustomPrayers() {
   // Add to side panel — after the standard prayer list
   const sidePanelSection = document.querySelector('#screenA .side-panel .panel-section');
   if (sidePanelSection) {
-    // Remove previously injected custom rows
     sidePanelSection.querySelectorAll('[data-custom-prayer]').forEach(el=>el.remove());
     active.forEach(p=>{
       const row = document.createElement('div');
       row.className='prayer-item';
       row.dataset.customPrayer='1';
-      row.innerHTML=`<span class="prayer-name">${p.name||''}</span><span class="prayer-time">${p.time||'--:--'}</span>`;
+      row.innerHTML='<span class="prayer-name">'+(p.name||'')+'</span><span class="prayer-time">'+(p.time||'--:--')+'</span>';
       sidePanelSection.appendChild(row);
     });
   }
-
-  // Add to footer prayer strip
-  if (typeof refreshPrayers === 'function') refreshPrayers();
 }
 
 // ── Firebase: Shiurim (shown in footer slideshow as extra slide) ──
